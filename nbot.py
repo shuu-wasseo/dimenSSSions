@@ -20,7 +20,7 @@ intents.messages = True
 intents.reactions = True
 
 load_dotenv()
-TOKEN = os.getenv('DISCORD_TOKEN')
+TOKEN = os.getenv('BACKUP_TOKEN')
 GUILD = os.getenv('DISCORD_GUILD')
 
 # user data
@@ -41,12 +41,6 @@ class MyClient(discord.Client):
         #self.tree.add_command(self.tree.get_command("challenges"), override=True)
         for x in ddms:
             ddms[x] = {"gen": {"msg": [], "opt": []}, "challs": {"msg": [], "opt": []}}
-        data = imdata()
-        for user in data:
-            for generator in ["como", "S"]:
-                for n in [9, 10]:
-                    data[user][generator][f"gen{n}"] = {"total": 0, "bought": 0}
-        exdata(data)
         await self.tree.sync()
 
 class error_embed(discord.Embed):
@@ -167,33 +161,6 @@ class SButtons(discord.ui.View):
         x = 4
         await self.click(x, interaction)
         
-    @discord.ui.button(label="max all",style=discord.ButtonStyle.green)
-    async def maxallb(self,interaction:discord.Interaction,button:discord.ui.Button):
-        await interaction.response.defer()
-        iuid = str(interaction.user.id)
-        data = imdata() 
-        game = data[iuid]
-        if str(interaction.user.id) == str(self.iuid):
-            for x in range((6 if game["inchallenge"]["ggrav"] == 4 else 8), 0, -1):
-                price = (Decimal(2**(x))**Decimal(game["S"][f"gen{x}"]["bought"]+x))**Decimal(2 if (game["inchallenge"]["ggrav"] == 5 and x != 1) else 1)
-                while game["S"]["amount"] >= price:
-                    game["S"]["amount"] -= price
-                    game["S"][f"gen{x}"]["total"] += 1
-                    game["S"][f"gen{x}"]["bought"] += 1
-                    data[iuid] = game
-                    if game["inchallenge"]["ggrav"] == 3:
-                        for x in range(x-1, 0, -1):
-                            game["S"][f"gen{x}"] = {"total": 0, "bought": 0}
-                    price = (Decimal(2**(x))**Decimal(game["S"][f"gen{x}"]["bought"]+x))**Decimal(2 if (game["inchallenge"]["ggrav"] == 5 and x != 1) else 1)
-            for x in range(10):
-                exdata(await tick(str(iuid), "S", 1, interaction, dt.now()))
-                await asyncio.sleep(0.001)
-            pr = prnt(iuid, "S")
-            embed = discord.Embed(title=f"{interaction.user.display_name} ({interaction.user.name})'s generation.SSS", description=ps(data, iuid)+f"\n```{pr}```")
-            await interaction.edit_original_response(embed=embed,view=SButtons(iuid)) 
-        else:
-            await interaction.followup.send(embed=discord.Embed(title="not your game!", description="please run the command yourself.", color=discord.Color.dark_red()), ephemeral=True)
-
     @discord.ui.button(label="S5",style=discord.ButtonStyle.gray)
     async def s5b(self,interaction:discord.Interaction,button:discord.ui.Button):
         await interaction.response.defer()
@@ -218,6 +185,45 @@ class SButtons(discord.ui.View):
         x = 8
         await self.click(x, interaction)
 
+    @discord.ui.button(label="S9",style=discord.ButtonStyle.gray)
+    async def s9b(self,interaction:discord.Interaction,button:discord.ui.Button):
+        await interaction.response.defer()
+        x = 9
+        await self.click(x, interaction)
+
+    @discord.ui.button(label="S10",style=discord.ButtonStyle.gray)
+    async def s10b(self,interaction:discord.Interaction,button:discord.ui.Button):
+        await interaction.response.defer()
+        x = 10
+        await self.click(x, interaction)
+
+    @discord.ui.button(label="max all",style=discord.ButtonStyle.green)
+    async def maxallb(self,interaction:discord.Interaction,button:discord.ui.Button):
+        await interaction.response.defer()
+        iuid = str(interaction.user.id)
+        data = imdata() 
+        game = data[iuid]
+        if str(interaction.user.id) == str(self.iuid):
+            for x in range((6 if game["inchallenge"]["ggrav"] == 4 else 8 if game["story"] < 5 else 10), 0, -1):
+                price = (Decimal(2**(x))**Decimal(game["S"][f"gen{x}"]["bought"]+x))**Decimal(2 if (game["inchallenge"]["ggrav"] == 5 and x != 1) else 1)
+                while game["S"]["amount"] >= price:
+                    game["S"]["amount"] -= price
+                    game["S"][f"gen{x}"]["total"] += 1
+                    game["S"][f"gen{x}"]["bought"] += 1
+                    data[iuid] = game
+                    if game["inchallenge"]["ggrav"] == 3:
+                        for x in range(x-1, 0, -1):
+                            game["S"][f"gen{x}"] = {"total": 0, "bought": 0}
+                    price = (Decimal(2**(x))**Decimal(game["S"][f"gen{x}"]["bought"]+x))**Decimal(2 if (game["inchallenge"]["ggrav"] == 5 and x != 1) else 1)
+            for x in range(10):
+                exdata(await tick(str(iuid), "S", 1, interaction, dt.now()))
+                await asyncio.sleep(0.001)
+            pr = prnt(iuid, "S")
+            embed = discord.Embed(title=f"{interaction.user.display_name} ({interaction.user.name})'s generation.SSS", description=ps(data, iuid)+f"\n```{pr}```")
+            await interaction.edit_original_response(embed=embed,view=SButtons(iuid)) 
+        else:
+            await interaction.followup.send(embed=discord.Embed(title="not your game!", description="please run the command yourself.", color=discord.Color.dark_red()), ephemeral=True)
+
     @discord.ui.button(label="grand gravity",style=discord.ButtonStyle.green)
     async def ggrav(self,interaction:discord.Interaction,button:discord.ui.Button):
         await interaction.response.defer()
@@ -227,13 +233,13 @@ class SButtons(discord.ui.View):
             iuid = str(interaction.user.id)
             data = imdata() 
             dat = data[iuid]
-            dat, objm, objn = ggrav(dat)
+            dat, objs = ggrav(dat)
             pr = prnt(iuid, "S")
             data[iuid] = dat
             exdata(data)
             embed = discord.Embed(title=f"{interaction.user.display_name} ({interaction.user.name})'s generation.SSS", description=ps(data, str(interaction.user.id))+f"\n```{pr}```")
             await interaction.edit_original_response(embed=embed,view=SButtons(iuid))
-            await interaction.followup.send(embed=discord.Embed(title="grand gravity!", description=f"congrats on your {ordinal(dat['prestige']['ggrav'])} grand gravity!" + (f"\nyou have 2 more como and 1 new objekt: {objm} {objn}!") if objm != "" else ""), ephemeral=True)
+            await interaction.followup.send(embed=discord.Embed(title="grand gravity!", description=f"congrats on your {ordinal(dat['prestige']['ggrav'])} grand gravity!\nyou have {2**Decimal(dat['prestige']['ggrav'])} more como" + (f"and {len(objs)} new objekt(s):\n") if objs != [] else "\n" + "\n".join([f"{m} {n}" for m, n in objs])), ephemeral=True)
         else:
             await interaction.followup.send(embed=discord.Embed(title="not enough S!", description="wait till you have enough S first.", color=discord.Color.dark_red()), ephemeral=True)
 
@@ -247,8 +253,8 @@ class CButtons(discord.ui.View):
         data = imdata()
         dt = data[str(int.user.id)]
         game = dt
-        if game["como"]["amount"] >= Decimal(2**(x))**Decimal(game["como"][f"gen{x}"]["bought"]+x):
-            game["como"]["amount"] -= Decimal(2**(x))**Decimal(game["como"][f"gen{x}"]["bought"]+x)
+        if game["como"]["amount"] >= Decimal(2**x)**Decimal(game["como"][f"gen{x}"]["bought"]+x):
+            game["como"]["amount"] -= Decimal(2**x)**Decimal(game["como"][f"gen{x}"]["bought"]+x)
             game["como"][f"gen{x}"]["total"] += 1
             game["como"][f"gen{x}"]["bought"] += 1
             data[str(int.user.id)] = game
@@ -283,26 +289,6 @@ class CButtons(discord.ui.View):
         x = 4
         await self.click(x, interaction)
         
-    @discord.ui.button(label="max all",style=discord.ButtonStyle.green)
-    async def maxallb(self,interaction:discord.Interaction,button:discord.ui.Button):
-        await interaction.response.defer()
-        iuid = str(interaction.user.id)
-        data = imdata() 
-        dt = data[iuid]
-        game = dt
-        for x in range(8, 0, -1):
-            price = Decimal(2**(x))**Decimal(game["como"][f"gen{x}"]["bought"]+x)
-            while game["como"]["amount"] >= price:
-                game["como"]["amount"] -= price
-                game["como"][f"gen{x}"]["total"] += 1
-                game["como"][f"gen{x}"]["bought"] += 1
-                data[iuid] = game
-                price = Decimal(2**(x))**Decimal(game["como"][f"gen{x}"]["bought"]+x)
-        exdata(data)
-        pr = prnt(iuid, "como")
-        embed = discord.Embed(title=f"{interaction.user.display_name} ({interaction.user.name})'s generation.SSS", description=ps(data, iuid)+f"\n```{pr}```")
-        await interaction.edit_original_response(embed=embed,view=CButtons(iuid)) 
-
     @discord.ui.button(label="como5",style=discord.ButtonStyle.gray)
     async def s5b(self,interaction:discord.Interaction,button:discord.ui.Button):
         await interaction.response.defer()
@@ -327,6 +313,57 @@ class CButtons(discord.ui.View):
         x = 8
         await self.click(x, interaction)
 
+    @discord.ui.button(label="como9",style=discord.ButtonStyle.gray)
+    async def s9b(self,interaction:discord.Interaction,button:discord.ui.Button):
+        await interaction.response.defer()
+        x = 9
+        await self.click(x, interaction)
+
+    @discord.ui.button(label="como10",style=discord.ButtonStyle.gray)
+    async def s10b(self,interaction:discord.Interaction,button:discord.ui.Button):
+        await interaction.response.defer()
+        x = 10
+        await self.click(x, interaction)
+
+    @discord.ui.button(label="max all",style=discord.ButtonStyle.green)
+    async def maxallb(self,interaction:discord.Interaction,button:discord.ui.Button):
+        await interaction.response.defer()
+        iuid = str(interaction.user.id)
+        data = imdata() 
+        dt = data[iuid]
+        game = dt
+        for x in range(8 if dt["story"] < 5 else 10, 0, -1):
+            price = Decimal(2**(x))**Decimal(game["como"][f"gen{x}"]["bought"]+x)
+            while game["como"]["amount"] >= price:
+                game["como"]["amount"] -= price
+                game["como"][f"gen{x}"]["total"] += 1
+                game["como"][f"gen{x}"]["bought"] += 1
+                data[iuid] = game
+                price = Decimal(2**(x))**Decimal(game["como"][f"gen{x}"]["bought"]+x)
+        exdata(data)
+        pr = prnt(iuid, "como")
+        embed = discord.Embed(title=f"{interaction.user.display_name} ({interaction.user.name})'s generation.SSS", description=ps(data, iuid)+f"\n```{pr}```")
+        await interaction.edit_original_response(embed=embed,view=CButtons(iuid)) 
+
+    @discord.ui.button(label="event gravity",style=discord.ButtonStyle.green)
+    async def egrav(self,interaction:discord.Interaction,button:discord.ui.Button):
+        await interaction.response.defer()
+        data = imdata() 
+        game = data[str(interaction.user.id)]
+        if game["como"]["amount"] >= 24**48:
+            iuid = str(interaction.user.id)
+            data = imdata() 
+            dat = data[iuid]
+            dat, objm, objn = egrav(dat)
+            pr = prnt(iuid, "como")
+            data[iuid] = dat
+            exdata(data)
+            embed = discord.Embed(title=f"{interaction.user.display_name} ({interaction.user.name})'s generation.SSS", description=ps(data, str(interaction.user.id))+f"\n```{pr}```")
+            await interaction.edit_original_response(embed=embed,view=SButtons(iuid))
+            await interaction.followup.send(embed=discord.Embed(title="event gravity!", description=f"congrats on your {ordinal(dat['prestige']['egrav'])} event gravity!" + (f"\nyou have {2**Decimal(dat['prestige']['egrav'])} more sigma and 1 new objekt: {objm} {objn}!") if objm != "" else ""), ephemeral=True)
+        else:
+            await interaction.followup.send(embed=discord.Embed(title="not enough S!", description="wait till you have enough como first.", color=discord.Color.dark_red()), ephemeral=True)
+
 class CDropdown(discord.ui.Select):
     def __init__(self, iuid):
         self.iuid = iuid
@@ -334,20 +371,22 @@ class CDropdown(discord.ui.Select):
         data = imdata()
         if data[iuid]["prestige"]["ggrav"] > 0:
             options.append(discord.SelectOption(label='grand gravity challenges (gdgc)'))
+        if data[iuid]["prestige"]["egrav"] > 0:
+            options.append(discord.SelectOption(label='event gravity challenges (etgc)'))
         super().__init__(placeholder='pick a challenge category', min_values=1, max_values=1, options=options)
 
     async def callback(self, interaction: discord.Interaction):
         data = imdata()
         ddms[self.iuid]["challs"]["opt"] = self.values[0]
         cat = ddms[self.iuid]["challs"]["opt"]
-        inchall = data[self.iuid]["inchallenge"]["ggrav"]
-        match cat:
-            case "grand gravity challenges (gdgc)":
-                embed = discord.Embed(title="grand gravity challenges (ggvc)", description=f"each challenge boosts the production of its corresponding generator by 8.\n{'you are not in any challenges.' if inchall == 0 else f'you are in challenge {inchall}.'}\n\n**subunits:**\nacid angel from asia / aaa: S2, S5, S7, S8\n+(kr)ystal eyes / +(kr)e: S1, S3, S4, S6")
-                ogr = ddms[self.iuid]["challs"]["msg"][-1]
-                for x in range(8):
-                    embed.add_field(name=f"ggvc{x+1}\n{challs['ggrav'][x][0]}" + ("\n(completed)" if x+1 in data[self.iuid]["challenges"]["ggrav"] else ""), value=challs["ggrav"][x][1])
-                await ogr.edit(embed=embed, view=GDGCButtons(self.iuid))
+        short = cat.split(" ")[-1][1:-1]
+        alt = "ggrav" if short == "gdgc" else "egrav"
+        inchall = data[self.iuid]["inchallenge"][alt]
+        embed = discord.Embed(title=cat, description=f"each {short} boosts the production of its corresponding generator by {8 if short == 'gdgc' else 10}.\n{f'you are not in any {short}s.' if inchall == 0 else f'you are in {short}{inchall}.'}\n\n**subunits:**\nacid angel from asia / aaa: S2, S5, S7, S8 (and S10 occasionally)\n+(kr)ystal eyes / +(kr)e: S1, S3, S4, S6 (and S9 occasionally)")
+        ogr = ddms[self.iuid]["challs"]["msg"][-1]
+        for x in range(8):
+            embed.add_field(name=f"ggvc{x+1}\n{challs[alt][x][0]}" + ("\n(completed)" if x+1 in data[self.iuid]["challenges"][alt] else ""), value=challs[alt][x][1])
+        await ogr.edit(embed=embed, view=CHButtons(self.iuid, cat))
 
 class CView(discord.ui.View):
     def __init__(self, iuid):
@@ -357,17 +396,19 @@ class CView(discord.ui.View):
         # Adds the dropdown to our view object.
         self.add_item(CDropdown(iuid))
 
-class GDGCButtons(discord.ui.View):
-    def __init__(self, iuid, timeout=180):
+class CHButtons(discord.ui.View):
+    def __init__(self, iuid, chall, timeout=180):
         super().__init__(timeout=timeout)
         self.iuid = iuid
+        self.chall =  chall
         self.add_item(CDropdown(iuid))
 
     async def click(self, x, int):
         data = imdata()
         game = data[str(int.user.id)]
-        if game["prestige"]["ggrav"] > 0:
-            game["inchallenge"]["ggrav"] = x
+        alt = "ggrav" if self.chall.split(" ")[-1][1:-1] == "gdgc" else "egrav"
+        if game["prestige"][alt] > 0:
+            game["inchallenge"][alt] = x
             game["S"]["amount"], game["S"]["/s"] = 2, 0
             for n in range(8):
                 game["S"][f"gen{n+1}"] = {
@@ -376,18 +417,18 @@ class GDGCButtons(discord.ui.View):
                 }
             game["como"]["power"] = 0
             game["start"] = str(dt.now())
-            if x == 6:
+            if x == 6 and alt == "ggrav":
                 game["challenges"]["gdgc6"] = []
                 for n in range(8):
                     y = 0.24*((8/0.24)**random.random())
                     game["challenges"]["gdgc6"].append(y)
             data[str(int.user.id)] = game
             exdata(data)
-            inchall = game["inchallenge"]["ggrav"]
+            inchall = game["inchallenge"][alt]
             embed = discord.Embed(title="grand gravity challenges (ggvc)", description=f"each challenge boosts the production of its corresponding generator by 8.\n{'you are not in any challenges.' if inchall == 0 else f'you are in gdgc{inchall}.'}\n\n**subunits:**\nacid angel from asia / aaa: S2, S5, S7, S8\n+(kr)ystal eyes / +(kr)e: S1, S3, S4, S6")
             for n in range(8):
-                embed.add_field(name=f"ggvc{n+1}\n{challs['ggrav'][n][0]}" + ("\n(completed)" if n+1 in game["challenges"]["ggrav"] else ""), value=challs["ggrav"][n][1])
-            await int.edit_original_response(embed=embed,view=GDGCButtons(self.iuid))
+                embed.add_field(name=f"ggvc{n+1}\n{challs[alt][n][0]}" + ("\n(completed)" if n+1 in game["challenges"][alt] else ""), value=challs[alt][n][1])
+            await int.edit_original_response(embed=embed,view=CHButtons(self.iuid, self.chall))
         else:
             await int.followup.send(embed=discord.Embed(title="not enough S!", description="wait till you have enough S first."), ephemeral=True)
 
@@ -452,23 +493,33 @@ topg = os.getenv('TOPGG_TOKEN')
 # constant game variables
 
 data = {}
-tS = ["seoyeon", "hyerin", "jiwoo", "chaeyeon", "yooyeon", "soomin", "nakyoung", "yubin"]
+tS = ["seoyeon", "hyerin", "jiwoo", "chaeyeon", "yooyeon", "soomin", "nakyoung", "yubin", "kaede", "dahyun"]
 tC = [f"como{x}" for x in range(8)]
 
 challs = {
     "ggrav": [
-        ["first grand gravity", "reach 24^24 for the first time."],
+        ["first grand gravity", "reach 1.334e+33 (24^24) S for the first time."],
         ["generation (smol ver.)", "S1 generator is heavily weakened but gets an exponentially increasing bonus."],
         ["termination", "buying a generator automatically erases all lower tier generators."],
         ["triplequarterS", "S7 and S8 generators are unavailable."],
         ["it's gold? or white?", "all generator costs are squared."],
         ["dimension shift", "all generators get a random multiplier from x0.24 to 8."],
-        ["two-system generation", "each generator produces the generator two tiers below. if not available, produces S."],
-        ["two-system generation\n(DIMENSION ver.)", "each generator produces the nearest lower-tier generator in the same subunit. if not available, produces S."]
+        ["2sys generation", "each generator produces the generator two tiers below. if not available, produces S."],
+        ["2sys generation\n(DIMENSION ver.)", "each generator produces the nearest lower-tier generator in the same subunit. if not available, produces S."]
+    ],
+    "egrav": [
+        ["first event gravity", "reach 1.779e+66 como for the first time."],
+        ["sssick sssoomin", "S6 and como6 generators do not produce anything."],
+        ["regravitation", "como1 generators produce S7 generators while Σ generators produce S8 generators. como and Σ power remain at 1 throughout."],
+        ["como breakdown", "como generators are disabled. S production is boosted by Σ power directly."],
+        ["regravitation breakdown", "como generators are disabled. Σ generators produce S8 generators."],
+        ["complete breakdown", "como and Σ generators are both disabled. S production is boosted by the number of event gravities."],
+        ["double 2sys generation", "each generator produces the generator two tiers below. if not available, produces S / como power."],
+        ["double 2sys generation\n(DIMENSION ver.)", "each generator produces the nearest lower-tier generator in the same subunit. if not available, produces S / como power. S9/como9 generators produce S6/como6 generators while S10/como10 generators produce S6/como6 generators."],
+        ["double 2sys generation\n(DIMENSION ver., hard mode)", "each generator produces the nearest lower-tier generator in the same subunit. if not available, produces S / como power. (S9/como9 and S10/como10 generators produce S/como power as well.)"],
+        ["age-neration", "generators generate the generator of the next youngest member. the youngest member (soomin, S6/como6) generates S / como power.\norder of member numbers from oldest to youngest: 5, 7, 10, 1, 4, 8, 3, 9, 2, 6"]
     ]
 }
-
-hlink = r"||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||"
 
 story = {
     """
@@ -512,6 +563,8 @@ you press the "S2" button. suddenly, another girl appears next to you. the scree
 
 > my name is SUAH. we at MODHAUS searched far and wide through years and years of extensive research to find the 24 special girls who have the special ability.
 > 
+> this group of 24 girls will be called tripleS.
+> 
 > your purpose will soon be made clear.
 
 and with that, the screen goes blank again.
@@ -546,7 +599,7 @@ the 7 of you have been hard at work, and have produced S in a rather short amoun
 > 
 > at the moment, we have only found the 8 of you, although many more are on the way.
 > 
-> right now, your task is to get to 1.333e33 S. such huge amounts of S are at the very limit of our capacity, so the S will combust and cause what is called a grand gravity, your first prestige layer. 
+> right now, your task is to get to 1.334e33 (24^24) S. such huge amounts of S are at the very limit of our capacity, so the S will combust and cause what is called a grand gravity, your first prestige layer. 
 > 
 > i will see you then.
 
@@ -585,6 +638,10 @@ chaeyeon grimaced. "there's more...?"
 > 
 > the third thing you've unlocked is grand gravity challenges. finishing the first grand gravity was actually your first challenge, and you have completed it! the other 7 challenges boost your production, and to complete these, you will have to generate enough como for a grand gravity under harsh conditions. rewards for challenges also consist of one objekt and one como, of course.
 > 
+> one thing you might want to note is that occasionally, you will be split into two groups, acid angel from asia and +(kr)ystal eyes. these sub-units are called DIMENSIONs, and are how you will join forces and demonstrate their abilities in the near future. these are not permanent, however, and you may soon find yourself in all kinds of different combinations.
+> 
+> acid angel from asia comprises of hyerin, yooyeon, nakyoung and yubin while +(kr)ystal eyes comprises of seoyeon, jiwoo, chaeyeon and soomin.
+> 
 > your new task is to get all 72 objekts and finish all 8 challenges. i will see you again then. but before i leave...
 
 a drawer popped out of the wall.
@@ -594,29 +651,37 @@ a drawer popped out of the wall.
 the objekt was a very smooth laminated piece of paper, and felt like a trading card but slightly thicker. the como, meanwhile, were shiny purple tokens.
 
 "interesting..." seoyeon mused. "so we need to do another...71 grand gravities before suah meets us again! EVERYBODY BACK TO WORK!"
-    """: "do 1 grand gravity",
+    """: "get 1.334e33 (24^24) S and do 1 grand gravity",
     """
 you finally have 72 objekts. the big screen lights up again, and everyone turns to the bright light emitting from it.
 
-> *sighs* unfortunately, we have hit a wall.
+> good job! you finally finished all 8 challenges and got all 72 objekts! 
 
-"what?" yubin asked, "what do you mean, *a wall*?"
+"uh, yeah," yubin asked, "can i ask why MODHAUS has high-quality photocards of all of us? where did they even get these pictures from??? i dont remember wearing this?????" yubin frantically pointed to her 100 objekt.
 
-> unfortunately, the ruler of this universe has not allowed us to proceed. this is the end of the road for now.
+SUAH ignored her.
+
+> anyway, you will soon unlock the second prestige layer, event gravity. get 1.779e66 como (24^48) to unlock this layer.
 > 
-> they will soon make updates to this world, but for now, all you can do is keep grinding for como.
+> instead of splitting you into two groups, event gravity comes with a naturally occuring DIMENSION comprising all the available members of tripleS.
 > 
-> however, the owner has granted you a grand gravity autobuyer that you have unlocked at 72 objekts.
+> from this point onwards, you will also now be able to autobuy grand gravity as long as you have all 72 objekts. the grand gravity autobuyer is activated every second by default.
 
-"i dont like this guy," soomin pouted.
+"24^48??? is this man insane???" soomin looked almost infuriated.
 
-"shush," jiwoo shushed soomin, "they might delete you."
+> it's not that hard, really. if you keep grinding, you'll be there in almost no time, especially with how quickly you complete grand gravities at this rate.
 
-> regardless of your opinions, i will see you soon.
+"she's not wrong, soomin," jiwoo calmed her down. "we'll be done with it in no time!"
 
-and with that, the screen went blank for what would be a much longer time.
+> that's the spirit, jiwoo! now if you get all that done, i'll be back soon.
 
-*thank you for playing the beta version of generation.SSS.*
+"WAIT!" hyerin stopped SUAH. "what will we unlock after the first event gravity?"
+
+> that's a secret for now, hyerin. but i can give you a hint: the number 10.
+
+and with that, the screen went blank.
+
+"did she just try to tell us we're getting 2 more members?"
     """: "do 72 grand gravities and finish all 8 gdgcs"
 }
 
@@ -626,6 +691,11 @@ defdic = {
         "/s": 0 
     },
     "como": {
+        "amount": 0,
+        "power": 1,
+        "/s": 0
+    },
+    "Σ": {
         "amount": 0,
         "power": 1,
         "/s": 0
@@ -650,13 +720,13 @@ defdic = {
 }
 
 for generator in defdic:
-    if generator in ["S", "como"]:
-        for x in range(8):
+    if generator in ["S", "como", "Σ"]:
+        for x in range(10):
             defdic[generator][f"gen{x+1}"] = {
                 "total": 0,
                 "bought": 0,
             }
-for x in range(8):
+for x in range(10):
     defdic["objekts"][f"S{x+1}"] = []
 
 def lastdim(iuid, generator):
@@ -668,11 +738,6 @@ def lastdim(iuid, generator):
     return 0
 
 def autoformat(num, dec=False):
-    try:
-        num = float(num)
-    except:
-        num = int(num)
-
     try:
         if dec:
             num = round(num, 3)
@@ -692,13 +757,13 @@ def autoformat(num, dec=False):
     while len(num.split(".")[-1]) < 3 and "." in num:
         num += "0"
     return num
-    
+
 def prnt(iuid, generator):
     data = imdata()
     dat = data[str(iuid)]
-    if not (dat["S"]["amount"] >= 24**24 and generator == "S"):
+    if dat[generator]["amount"] < 24**24:
         table = []
-        for x in range(8):
+        for x in range(8 if dat["story"] < 6 else 10):
             if (x <= lastdim(iuid, generator)+1) and not (dat["inchallenge"]["ggrav"] == 4 and x in [6, 7]) and not (dat[generator][f"gen1"]["total"] == 0 and x == 1):
                 memb = f"S{x+1}"
                 try:
@@ -707,21 +772,34 @@ def prnt(iuid, generator):
                     atbitv = str(min(wait.seconds, 2**(9-len(dat["objekts"][memb])))) + "s"
                 except:
                     atbitv = "none"
-                table.append([f"{generator}{x+1}", f"{tS[x]}", autoformat(dat[generator][f"gen{x+1}"]["total"]) + " (" + autoformat(dat[generator][f"gen{x+1}"]["bought"], dec=False) + ")", autoformat((Decimal(2**(x+1))**Decimal(dat[generator][f"gen{x+1}"]["bought"]+x+1))**Decimal(2 if (dat["inchallenge"]["ggrav"] == 5 and x != 0) else 1))] + ([atbitv] if generator == "S" else []))
+                table.append([f"{generator}{x+1}", f"{tS[x]}", autoformat(dat[generator][f"gen{x+1}"]["total"]) + " (" + autoformat(dat[generator][f"gen{x+1}"]["bought"], dec=False) + ")", autoformat(((2**(x+1))**(dat[generator][f"gen{x+1}"]["bought"]+x+1))**(2 if (dat["inchallenge"]["ggrav"] == 5 and x != 0) else 1))] + ([atbitv] if generator == "S" else []))
         amount = autoformat(dat[generator]["amount"]) 
         ps = autoformat(dat[generator]["/s"])
+        boostab = []
+        if generator == "S":
+            boostab.append([f"\n8^{lastdim(iuid, generator)} ({autoformat(8**(lastdim(iuid, generator)))})", f"{lastdim(iuid, generator)+1} big S"])
+            if lastdim(iuid, "S") == 7:
+                gen8b = dat["S"]["gen8"]["bought"]
+                boostab.append([f"\n24^{gen8b} ({autoformat(24**Decimal(gen8b))})", f"{autoformat(gen8b)} S8 generators bought"])
+        if dat["prestige"]["ggrav"] > 0 and generator == "S":
+            boostab.append([autoformat(dat["como"]["power"]) + f"^0.125 ({autoformat(Decimal(dat['como']['power'])**Decimal(0.125))})", "como generators"])
         if dat["inchallenge"]["ggrav"] == 0:
             challenge = "you are not in any challenge.\n\n"
         else:
             inggravc = dat["inchallenge"]["ggrav"]
             challenge = f"you are in challenge {inggravc}.\n\n"
+            if dat["inchallenge"]["ggrav"] == 2:
+                boostab.append([autoformat(Decimal(0.01)*(Decimal(dat["time"])**Decimal(1.0038065))), "gdgc2"])
+            elif dat["inchallenge"]["ggrav"] == 6:
+                for x in range(8):
+                    boostab.append([autoformat(dat["challenges"]["gdgc6"][x], dec=True) + f" (S{x+1})", "gdgc6"])
         pgenerator = generator if generator != "como" else "como power"
         comoa = autoformat(dat["como"]["power"])
         if generator == "como":
             amounts = f"you have {comoa} {pgenerator}. ({ps} {pgenerator}/s)\n" + (f"you have {amount} como.\n")
         else:
             amounts = f"you have {amount} {pgenerator}. ({ps} {pgenerator}/s)\n"
-        return amounts + challenge + tabulate(table, headers=["gen", "member", "amount", f"cost ({generator})"] + (["autobuy"] if generator == "S" else []))
+        return amounts + challenge + tabulate(table, headers=["gen", "member", "amount", f"cost ({generator})"] + (["autobuy"] if generator == "S" else [])) + f"\n\nmultipliers:\n" + tabulate(boostab, headers=["value", "source"])
     else:
         return f"your S has combusted and caused a grand gravity. press the 'grand gravity' button to continue."
 
@@ -733,7 +811,7 @@ async def milli(game, generator, iuid, ticks, interaction, start):
     boosts = 1
     if generator == "S":
         boosts *= Decimal(8**(lastdim(iuid, generator)))*(Decimal(24)**Decimal(gen8b))*(Decimal(game["como"]["power"])**Decimal(1/8))
-    tnews = Decimal(0)
+    tnews = 0
     start = dt.now()
     for n in range(ticks):
         game = imdata()[iuid]
@@ -766,9 +844,10 @@ async def milli(game, generator, iuid, ticks, interaction, start):
             else:
                 if x == 0:
                     if generator == "S":
-                        news = max(Decimal(game[generator][f"gen1"]["total"])*Decimal(boosts)*Decimal('0.001') if game["inchallenge"]["ggrav"] != 2 else Decimal(game[generator][f"gen1"]["total"])**Decimal(Decimal('0.01')*Decimal(game["time"])**Decimal('1.0038065'))*Decimal('0.001')*Decimal(25/24)**Decimal(game[generator][f"gen{x+1}"]["bought"]), Decimal('0.001'))
+                        news = max(Decimal(game[generator][f"gen1"]["total"])*Decimal(boosts)*Decimal('0.001') if game["inchallenge"]["ggrav"] != 2 else Decimal(game[generator][f"gen1"]["total"])**Decimal(Decimal('0.01')*Decimal(game["time"])**Decimal('1.0038065'))*Decimal('0.001')*Decimal(25/24)**Decimal(game[generator][f"gen{x+1}"]["bought"]), 0.001)
+                        news = Decimal(news)
                         if game["inchallenge"]["ggrav"] == 6:
-                            news *= game["challenges"]["gdgc6"][x]
+                            news *= Decimal(game["challenges"]["gdgc6"][x])
                         game[generator]["/s"] = news
                         tnews += news
                     elif generator == "como":
@@ -802,7 +881,7 @@ async def milli(game, generator, iuid, ticks, interaction, start):
         else:
             if game["S"]["amount"] >= 24**24 and start + timedelta(microseconds=1000*n) > dt.fromisoformat(atb_ggrav) + timedelta(seconds=1):
                 iuid = str(interaction.user.id)
-                game, objm, objn = ggrav(game)
+                game, objs = ggrav(game)
                 data[iuid] = game
         tnews = Decimal(str(tnews))
         game[generator]["amount" if generator == "S" else "power"] += tnews
@@ -820,10 +899,10 @@ def imdata():
                 for gen in game[generator]:
                     if gen[:3] == "gen":
                         for x in game[generator][gen]:
-                            game[generator][gen][x] = Decimal(round(float(game[generator][gen][x]), 3))
+                            game[generator][gen][x] = round(Decimal(game[generator][gen][x]), 3)
                     else:
                         try:
-                            game[generator][gen] = Decimal(round(float(game[generator][gen]), 3))
+                            game[generator][gen] = round(Decimal(game[generator][gen]), 3)
                         except:
                             pass
         data[uid] = game
@@ -838,6 +917,8 @@ def exdata(data):
                     if gen[:3] == "gen":
                         for x in game[generator][gen]:
                             game[generator][gen][x] = str(game[generator][gen][x])
+        for x in data[uid]["challenges"]:
+            data[uid]["challenges"][x] = list(data[uid]["challenges"][x].keys())
         data[uid] = game
     json.dump(data, open("data.json", "w"), indent=4, default=str)
 
@@ -891,31 +972,36 @@ def ggrav(dat):
             "total": 0,
             "bought": 0,
         }
-    full = True
-    if game["prestige"]["ggrav"] >= 72:
-        game["autobuyers"]["ggrav"] = str(dt.now())
-    for member in game["objekts"]:
-        if len(game["objekts"][member]) != 9:
-             full = False
-             break
-    if not full:
-        if len(game["autobuyers"]) == 8:
-            while 1:
-                objm = "S" + str(random.choice(range(8))+1)
-                if len(game["objekts"][objm]) != 9:
-                    break
-            while 1:
-                objn = f"10{random.choice(range(8))+1}"
-                if objn not in game["objekts"][objm]:
-                    break
-        else:
-            while 1:
-                objm = "S" + str(random.choice(range(8))+1)
-                objn = "100"
-                if objm not in game["autobuyers"]:
-                    game["autobuyers"][objm] = str(dt.now())
-                    break
-        game["objekts"][objm].append(objn)
+    full = False
+    count = 0
+    objs = []
+    while not full and count < game["prestige"]["egrav"] + 1:
+        if game["prestige"]["ggrav"] >= 72:
+            game["autobuyers"]["ggrav"] = str(dt.now())
+        full = True
+        for member in game["objekts"]:
+            if len([x for x in game["objekts"][member] if x[:-2] == "1"]) != 9:
+                 full = False
+                 break
+        if not full:
+            if len(game["autobuyers"]) == 8:
+                while 1:
+                    objm = "S" + str(random.choice(range(8))+1)
+                    if len(game["objekts"][objm]) != 9:
+                        break
+                while 1:
+                    objn = f"10{random.choice(range(8))+1}"
+                    if objn not in game["objekts"][objm]:
+                        break
+            else:
+                while 1:
+                    objm = "S" + str(random.choice(range(8))+1)
+                    objn = "100"
+                    if objm not in game["autobuyers"]:
+                        game["autobuyers"][objm] = str(dt.now())
+                        break
+            game["objekts"][objm].append(objn)
+            objs.append([objm, objn])
     if game["prestige"]["ggrav"] == 0:
         game["challenges"]["ggrav"].append(1)
     elif game["inchallenge"]["ggrav"] != 0:
@@ -923,6 +1009,62 @@ def ggrav(dat):
         game["inchallenge"]["ggrav"] = 0
     game["start"] = str(dt.now())
     game["prestige"]["ggrav"] += 1
+    return dat, objs
+
+def egrav(dat):
+    objm, objn = "", ""
+    game = dat
+    game["prestige"]["ggrav"] = 0
+    game["S"]["amount"], game["S"]["/s"] = 2, 0
+    game["como"]["amount"], game["como"]["power"] = 0, 0
+    game["Σ"]["amount"] += int(2**(game["prestige"]["egrav"]))
+    for x in range(8):
+        for g in ["S", "como", "Σ"]:
+            game[g][f"gen{x+1}"] = {
+                "total": 0,
+                "bought": 0,
+            }
+    full = True
+    if game["prestige"]["egrav"] >= 160:
+        game["autobuyers"]["egrav"] = str(dt.now())
+    for member in game["objekts"]:
+        deck = game["objekts"][member]
+        for card in deck:
+            if card[:-2] == "1":
+                game["objekts"][member].remove(card)
+        if len([x for x in deck if x[:-2] == "2"]) != 17:
+             full = False
+             break
+    if not full:
+        if len(game["autobuyers"]) == 8:
+            while 1:
+                objm = "como" + str(random.choice(range(10))+1)
+                if len(game["objekts"][objm]) != 9:
+                    break
+            while 1:
+                choice = random.choice(range(16))+1
+                if len(str(choice)) == 1:
+                    objn = f"20{choice}"
+                else:
+                    objn = f"2{choice}"
+                if objn not in game["objekts"][objm]:
+                    break
+        else:
+            while 1:
+                objm = "como" + str(random.choice(range(10))+1)
+                objn = "200"
+                if objm not in game["autobuyers"]:
+                    game["autobuyers"][objm] = str(dt.now())
+                    break
+        game["objekts"][objm].append(objn)
+    game["challenges"]["ggrav"] = []
+    if game["prestige"]["egrav"] == 0:
+        game["challenges"]["egrav"].append(1)
+    elif game["inchallenge"]["egrav"] != 0:
+        game["challenges"]["egrav"].append(game["inchallenge"]["egrav"])
+        game["inchallenge"]["egrav"] = 0
+    game["start"] = str(dt.now())
+    game["prestige"]["egrav"] += 1
     return dat, objm, objn
 
 def ordinal(num):
@@ -957,28 +1099,28 @@ def ordinal(num):
 @bot.tree.command(name="generation", description="play")
 async def generation(interaction):
     await interaction.response.defer()
-    #try:
-    global defdic 
-    data = imdata()
-    iuid = str(interaction.user.id)
     try:
-        data[iuid]
-    except:
-        defdic["start"] = str(dt.now())
-        defdic["access"] = str(dt.now())
-        data[iuid] = defdic 
-        exdata(data)
+        global defdic 
+        data = imdata()
+        iuid = str(interaction.user.id)
+        try:
+            data[iuid]
+        except:
+            defdic["start"] = str(dt.now())
+            defdic["access"] = str(dt.now())
+            data[iuid] = defdic 
+            exdata(data)
 
-    try:
-        ddms[iuid]
-    except:
-        ddms[iuid] = {"gen": {"msg": [], "opt": []}, "challs": {"msg": [], "opt": []}}
+        try:
+            ddms[iuid]
+        except:
+            ddms[iuid] = {"gen": {"msg": [], "opt": []}, "challs": {"msg": [], "opt": []}}
 
-    embed = discord.Embed(title=f"{interaction.user.display_name} ({interaction.user.name})'s generation.SSS", description=f"pick a generator type to proceed.")
-    await interaction.followup.send(embed=embed, view=GDView(iuid))
-    ddms[iuid]["gen"]["msg"].append(await interaction.original_response())
-    #except:
-    #    pass
+        embed = discord.Embed(title=f"{interaction.user.display_name} ({interaction.user.name})'s generation.SSS", description=f"pick a generator type to proceed.")
+        await interaction.followup.send(embed=embed, view=GDView(iuid))
+        ddms[iuid]["gen"]["msg"].append(await interaction.original_response())
+    except:
+        pass
 
 @bot.tree.command(name="objekts", description="view objekts")
 async def objekts(interaction):
@@ -995,21 +1137,36 @@ async def objekts(interaction):
 
     while 1:
         await asyncio.sleep(1)
+        embed = discord.Embed(title=f"{interaction.user.display_name} ({interaction.user.name})'s objekts", description=f"you have {sum([len(data[iuid]['objekts'][x]) for x in data[iuid]['objekts']])} objekts.")
+
         table = []
         data = imdata()
-        for memb in data[iuid]["objekts"]:
-            table.append([f"\n{memb}"])
-            objekts = "" 
-            data[str(interaction.user.id)]["objekts"][memb].sort()
-            for obj in [f"10{x}" for x in range(0, 9)]:
-                if obj in data[str(interaction.user.id)]["objekts"][memb]:
-                    objekts += f"{obj} "
-                else:
-                    objekts += f"    "
-            table[-1] += [objekts, str(2**(9-len(data[str(interaction.user.id)]["objekts"][memb])))+"s" if memb in data[str(interaction.user.id)]["autobuyers"] else "none"]
-        tab = tabulate(table, headers=["gen", "objekts", "rate"])
 
-        embed = discord.Embed(title=f"{interaction.user.display_name} ({interaction.user.name})'s objekts", description=f"{sum([len(data[iuid]['objekts'][x]) for x in data[iuid]['objekts']])}/72 objekts\n```{tab}```")
+        series = [
+            [f"10{x+1}" for x in range(9)],
+            [f"20{x+1}" for x in range(9)],
+            [f"20{x+9}" if x+9 < 10 else f"2{x+9}" for x in range(8)]
+        ]
+        for s in series:   
+            for memb in data[iuid]["objekts"]:
+                table.append([f"\n{memb}"])
+                objekts = "" 
+                data[str(interaction.user.id)]["objekts"][memb].sort()
+                for obj in s:
+                    if obj in data[str(interaction.user.id)]["objekts"][memb]:
+                        objekts += f"{obj} "
+                    else:
+                        objekts += f"    "
+                table[-1] += [objekts, str(2**(9-len(data[str(interaction.user.id)]["objekts"][memb])))+"s" if memb in data[str(interaction.user.id)]["autobuyers"] else "none"]
+            tab = tabulate(table, headers=["gen", "objekts", "rate"])
+            sernames = {
+                "100": "first class objekts (100-108, S autobuyers)",
+                "200": "second class objekts (1/2, 200-208, como autobuyers)",
+                "208": "second class objekts (2/2, 209-216, como autobuyers)"
+            }
+
+            embed.add_field(name=sernames[s[0]], value=f"```{tab}```")
+
         try:
             await interaction.response.send_message(embed=embed)
         except:
@@ -1049,7 +1206,7 @@ async def help(interaction):
         "concept": "the concept of this game was based on antimatter dimensions, a game where each dimension creates the previous dimension. i wanted to make a tripleS parody so here it is! for credits, see `/credits`",
         "S generators": "most generators usually produce the generator one tier below them (S3 generators produce S2 generators, etc.) but S1 generators produce S, a special kind of energy with supernatural properties. buying a generator also multiplies the generator's overall production by 25/24.",
         "multipliers": "boosters boost S1's production in most cases (other than some challenges like gdgc6). the main boosters you will notice are 8^(number of S - 1) and 24^(number of S8 generators).",
-        "grand gravity": "the first prestige layer. S is limted at 24^24, at which a grand gravity will occur. all gravity will be reset and one objekt and 2^(number of grand gravities including this one) como will be given.",
+        "grand gravity": "the first prestige layer. S is limted at 1.334e33 (24^24), at which a grand gravity will occur. all gravity will be reset and one objekt and 2^(number of grand gravities including this one) como will be given.",
         "objekts": "objekts either unlock (100) or boost (101-108) your autobuyers. your autobuyer interval starts at 256s, before halving with every objekt (other than 100). with all objekts, your autobuyer interval should be 1s. see `/objekts` to view all your objekts.",
         "como": "como generators work like S generators, but they produce como power, not como (which is only obtainable from grand gravity). como power is used to boost S1's overall production by (como power)^0.125.",
         "challenges": "at the moment, there is only one category of challenges, grand gravity challenges (gdgcs). these challenges require you to start from the beginning and cause a grand gravity but under limited circumstances. see `/challenges` for more.",
@@ -1133,8 +1290,9 @@ async def fstory(interaction):
         except:
             await interaction.followup.send(embed=x)
 
+
 @bot.tree.command(name="multipliers", description="see your multipliers or boosts")
-async def multipliers(interaction):
+async def boosts(interaction):
     data = imdata()
     iuid = str(interaction.user.id)
 
@@ -1150,14 +1308,14 @@ async def multipliers(interaction):
     embed = discord.Embed(title=f"{interaction.user.display_name} ({interaction.user.name})'s boosts", description="boosty woosty ehehe.")
     soverall = f"x{autoformat(8**(lastdim(iuid, 'S')))} (`8^({lastdim(iuid, 'S')}-1`), {lastdim(iuid, 'S')+1} big S)"
     if lastdim(iuid, "S") == 7:
-        gen8b = game["S"]["gen8"]["bought"]
-        soverall += f"\nx{autoformat(24**Decimal(gen8b))} (`24^{autoformat(gen8b)}`, S8 generators bought)"
+        gen8b = Decimal(game["S"]["gen8"]["bought"])
+        soverall += f"\nx{autoformat(24**gen8b)} (`24^{autoformat(gen8b)}`, S8 generators bought)"
     if game["prestige"]["ggrav"] > 0:
         soverall += f"\nx{autoformat(Decimal(game['como']['power'])**Decimal('0.125'))} (`" + autoformat(game["como"]["power"]) + f"^0.125`, como generators)"
     embed.add_field(name="overall S production (S1)", value=soverall, inline=False)
     for x in range(lastdim(iuid, "S")+1):
         count = int(game["S"][f"gen{x+1}"]["bought"])
-        mult = f"\n\nx{autoformat(Decimal(25/24)**Decimal(count), dec=True)} (`(25/24)^{autoformat(count)}`, S{x+1} generators bought)"
+        mult = f"\n\nx{autoformat((25/24)**count, dec=True)} (`(25/24)^{autoformat(count)}`, S{x+1} generators bought)"
         if x+1 in game["challenges"]["ggrav"]:
             mult += f"\nx8 (gdgc{x+1} completed)"
         if game["inchallenge"]["ggrav"] == 6:
@@ -1225,7 +1383,7 @@ async def viewprof(interaction):
             case "ggrav":
                 chall = "gdgc"
             case "egrav":
-                chall = "edgc"
+                chall = "etgc"
             case _:
                 chall = ""
         if v == 0:

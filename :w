@@ -1,0 +1,488 @@
+# bot.py
+
+# load discord
+import os
+import discord
+import math
+import json
+from discord import app_commands
+from dotenv import load_dotenv
+from tabulate import tabulate
+from arrow import Arrow
+import asyncio
+
+intents = discord.Intents.default()
+intents.messages = True
+intents.reactions = True
+
+load_dotenv()
+TOKEN = os.getenv('DISCORD_TOKEN')
+GUILD = os.getenv('DISCORD_GUILD')
+
+data = json.load(open("data.json", "r"))
+
+class MyClient(discord.Client):
+    def __init__(self, *, intents: discord.Intents):
+        super().__init__(intents=intents)
+        self.tree = app_commands.CommandTree(self)
+
+    async def setup_hook(self):
+        for guild in self.guilds:
+            self.tree.clear_commands(guild=guild)
+        self.tree.remove_command("play")
+        self.tree.add_command(self.tree.get_command("generation"), override=True)
+        await self.tree.sync()
+
+class error_embed(discord.Embed):
+    def __init__(self, error):
+        super().__init__()
+        if error == "ongoing simulation":
+            self.title = f"error! {error}"
+            self.description = "you already have an ongoing simulation. please wait for the simulation to finish first."
+        else:
+            self.title = f"error! invalid {error}."
+            self.description = f"check `/help` to see if your {error.split()[-1]} is in the right format. otherwise, please join the support server here.\nhttps://discord.gg/GPfpUNmxPP"
+        self.color = discord.Color.dark_red()
+
+class SButtons(discord.ui.View):
+    def __init__(self, *, timeout=180):
+        super().__init__(timeout=timeout)
+
+    async def click(self, x, int):
+        data = json.load(open("data.json", "r"))
+        dt = data[str(int.user.id)]
+        game = dt["game"]
+        if game["S"]["amount"] >= (2**(x))**(game["S"][f"gen{x}"]["bought"]+x):
+            game["S"]["amount"]-= (2**(x))**(game["S"][f"gen{x}"]["bought"]+x)
+            game["S"][f"gen{x}"]["total"] += 1
+            game["S"][f"gen{x}"]["bought"] += 1
+            data[str(int.user.id)]["game"] = game
+            json.dump(data, open("data.json", "w"), indent=4)
+            pr = prnt(int.user.id, "S")
+            embed = discord.Embed(title=f"{interaction.user.display_name} ({int.user.name})'s dimenSSSions", description=ps(dt)+f"\n```{pr}```")
+            await int.edit_original_response(embed=embed,view=SButtons())
+        else:
+            await int.followup.send(embed=discord.Embed(title="not enough S!", description="wait till you have enough S first."), ephemeral=True)
+
+    @discord.ui.button(label="S1",style=discord.ButtonStyle.gray)
+    async def s1b(self,interaction:discord.Interaction,button:discord.ui.Button):
+        await interaction.response.defer()
+        x = 1
+        await self.click(x, interaction)
+        
+    @discord.ui.button(label="S2",style=discord.ButtonStyle.gray)
+    async def s2b(self,interaction:discord.Interaction,button:discord.ui.Button):
+        await interaction.response.defer()
+        x = 2
+        await self.click(x, interaction)
+
+    @discord.ui.button(label="S3",style=discord.ButtonStyle.gray)
+    async def s3b(self,interaction:discord.Interaction,button:discord.ui.Button):
+        await interaction.response.defer()
+        x = 3
+        await self.click(x, interaction)
+
+    @discord.ui.button(label="S4",style=discord.ButtonStyle.gray)
+    async def s4b(self,interaction:discord.Interaction,button:discord.ui.Button):
+        await interaction.response.defer()
+        x = 4
+        await self.click(x, interaction)
+        
+    @discord.ui.button(label="max all",style=discord.ButtonStyle.green)
+    async def maxallb(self,interaction:discord.Interaction,button:discord.ui.Button):
+        await interaction.response.defer()
+        iuid = str(interaction.user.id)
+        data = json.load(open("data.json", "r")) 
+        dt = data[iuid]
+        game = dt["game"]
+        for x in range(max([lastdim(iuid)+1, 8]), 0, -1):
+            while game["S"]["amount"] >= (2**(x))**(game["S"][f"gen{x}"]["bought"]+x):
+                game["S"]["amount"] -= (2**(x))**(game["S"][f"gen{x}"]["bought"]+x)
+                game["S"][f"gen{x}"]["total"] += 1
+                game["S"][f"gen{x}"]["bought"] += 1
+                data[iuid]["game"] = game
+        json.dump(data, open("data.json", "w"), indent=4)
+        pr = prnt(iuid, "S")
+        embed = discord.Embed(title=f"{interaction.user.display_name} ({interaction.user.name})'s dimenSSSions", description=ps(dt)+f"\n```{pr}```")
+        await interaction.edit_original_response(embed=embed,view=SButtons()) 
+
+    @discord.ui.button(label="S5",style=discord.ButtonStyle.gray)
+    async def s5b(self,interaction:discord.Interaction,button:discord.ui.Button):
+        await interaction.response.defer()
+        x = 5
+        await self.click(x, interaction)
+
+    @discord.ui.button(label="S6",style=discord.ButtonStyle.gray)
+    async def s6b(self,interaction:discord.Interaction,button:discord.ui.Button):
+        await interaction.response.defer()
+        x = 6
+        await self.click(x, interaction)
+
+    @discord.ui.button(label="S7",style=discord.ButtonStyle.gray)
+    async def s7b(self,interaction:discord.Interaction,button:discord.ui.Button):
+        await interaction.response.defer()
+        x = 7
+        await self.click(x, interaction)
+
+    @discord.ui.button(label="S8",style=discord.ButtonStyle.gray)
+    async def s8b(self,interaction:discord.Interaction,button:discord.ui.Button):
+        await interaction.response.defer()
+        x = 8
+        await self.click(x, interaction)
+
+    @discord.ui.button(label="grand gravity",style=discord.ButtonStyle.green)
+    async def ggrav(self,interaction:discord.Interaction,button:discord.ui.Button):
+        await interaction.response.defer()
+        data = json.load(open("data.json", "r")) 
+        dt = data[iuid]
+        game = dt["game"]
+        if game["S"]["amount"] < 24**24:
+            iuid = str(interaction.user.id)
+            data = json.load(open("data.json", "r")) 
+            dt = data[iuid]
+            game = dt["game"]
+            game["S"]["amount"], game["S"]["S/s"] = 2, 0
+            game["como"] += 2
+            for x in range(8):
+                game["S"][f"gen{x+1}"] = {
+                    "total": 0,
+                    "bought": 0,
+                }
+            pr = prnt(iuid, "S")
+            embed = discord.Embed(title=f"{interaction.user.display_name} ({interaction.user.name})'s dimenSSSions", description=ps(dt)+f"\n```{pr}```")
+            await interaction.edit_original_response(embed=embed,view=SButtons())
+        else:
+            await interaction.followup.send(embed=discord.Embed(title="not enough S!", description="wait till you have enough S first."), ephemeral=True)
+
+class CButtons(discord.ui.View):
+    def __init__(self, *, timeout=180):
+        super().__init__(timeout=timeout)
+
+    async def click(self, x, int):
+        data = json.load(open("data.json", "r"))
+        dt = data[str(int.user.id)]
+        game = dt["game"]
+        if game["como"]["amount"] >= (2**(x))**(game["como"][f"gen{x}"]["bought"]+x):
+            game["como"]["amount"] -= (2**(x))**(game["como"][f"gen{x}"]["bought"]+x)
+            game["como"][f"gen{x}"]["total"] += 1
+            game["como"][f"gen{x}"]["bought"] += 1
+            data[str(int.user.id)]["game"] = game
+            json.dump(data, open("data.json", "w"), indent=4)
+            pr = prnt(int.user.id, "como")
+            embed = discord.Embed(title=f"{int.user.display_name} ({int.user.name})'s dimenSSSions", description=ps(dt)+f"\n```{pr}```")
+            await int.edit_original_response(embed=embed,view=SButtons())
+        else:
+            await int.followup.send(embed=discord.Embed(title="not enough S!", description="wait till you have enough S first."), ephemeral=True)
+
+    @discord.ui.button(label="como1",style=discord.ButtonStyle.gray)
+    async def s1b(self,interaction:discord.Interaction,button:discord.ui.Button):
+        await interaction.response.defer()
+        x = 1
+        await self.click(x, interaction)
+        
+    @discord.ui.button(label="como2",style=discord.ButtonStyle.gray)
+    async def s2b(self,interaction:discord.Interaction,button:discord.ui.Button):
+        await interaction.response.defer()
+        x = 2
+        await self.click(x, interaction)
+
+    @discord.ui.button(label="como3",style=discord.ButtonStyle.gray)
+    async def s3b(self,interaction:discord.Interaction,button:discord.ui.Button):
+        await interaction.response.defer()
+        x = 3
+        await self.click(x, interaction)
+
+    @discord.ui.button(label="como4",style=discord.ButtonStyle.gray)
+    async def s4b(self,interaction:discord.Interaction,button:discord.ui.Button):
+        await interaction.response.defer()
+        x = 4
+        await self.click(x, interaction)
+        
+    @discord.ui.button(label="max all",style=discord.ButtonStyle.green)
+    async def maxallb(self,interaction:discord.Interaction,button:discord.ui.Button):
+        await interaction.response.defer()
+        iuid = str(interaction.user.id)
+        data = json.load(open("data.json", "r")) 
+        dt = data[iuid]
+        game = dt["game"]
+        for x in range(max([lastdim(iuid)+1, 8]), 0, -1):
+            while game["S"] >= (2**(x))**(game["S"][f"gen{x}"]["bought"]+x):
+                game["S"] -= (2**(x))**(game["S"][f"gen{x}"]["bought"]+x)
+                game["S"][f"gen{x}"]["total"] += 1
+                game["S"][f"gen{x}"]["bought"] += 1
+                data[iuid]["game"] = game
+        json.dump(data, open("data.json", "w"), indent=4)
+        pr = prnt(iuid, "como")
+        embed = discord.Embed(title=f"{interaction.user.display_name} ({interaction.user.name})'s dimenSSSions", description=ps(dt)+f"\n```{pr}```")
+        await interaction.edit_original_response(embed=embed,view=SButtons()) 
+
+    @discord.ui.button(label="como5",style=discord.ButtonStyle.gray)
+    async def s5b(self,interaction:discord.Interaction,button:discord.ui.Button):
+        await interaction.response.defer()
+        x = 5
+        await self.click(x, interaction)
+
+    @discord.ui.button(label="como6",style=discord.ButtonStyle.gray)
+    async def s6b(self,interaction:discord.Interaction,button:discord.ui.Button):
+        await interaction.response.defer()
+        x = 6
+        await self.click(x, interaction)
+
+    @discord.ui.button(label="como7",style=discord.ButtonStyle.gray)
+    async def s7b(self,interaction:discord.Interaction,button:discord.ui.Button):
+        await interaction.response.defer()
+        x = 7
+        await self.click(x, interaction)
+
+    @discord.ui.button(label="como8",style=discord.ButtonStyle.gray)
+    async def s8b(self,interaction:discord.Interaction,button:discord.ui.Button):
+        await interaction.response.defer()
+        x = 8
+        await self.click(x, interaction)
+
+bot = MyClient(intents=intents)
+
+topg = os.getenv('TOPGG_TOKEN')
+
+data = {}
+tS = ["yoon seoyeon", "jeong hyerin", "lee jiwoo", "kim chaeyeon", "kim yooyeon", "kim soomin", "kim nakyoung", "gong yubin"]
+tC = [f"como{x}" for x in range(8)]
+
+story = [
+    """
+you wake up in an empty room. there is no one else in the room, just you...and a big screen with words on it.
+
+slowly, you get up and approach the screen.
+
+> yoon seoyeon, you have chosen to become the first big S, or S1. out of many small s in the world, you are the first girl we discovered with the special ability to make S.
+> 
+> you have been equipped with 2 S. these 2 S are very valuable and rare, but they will no longer be rare when we start mass producing them.
+> 
+> your job now is to generate as much S as possible. click the "S1" button to spend 2 S to buy your first generator.
+    """,
+    """
+apprehensively, you press the button. suddenly, a machine appears in front of you.
+
+> each S1 generator allows you to produce one S per second. this number may increase over time, but what's important now is that you get as many generators as possible to produce S.
+> 
+> when you have 4 S, you will be able to introduce another big S into the room. the second big S (S2) will not generate S, but is equipped with a generator that generates your generators.
+> 
+> each subsequent big S generates generators of the previous big S. for example, S3 generators will generate S2 generators, which in turn generate S1 generators, which generate S. this allows your S production to increase exponentially.
+> 
+> you must unlock each S in order. for example, S3 cannot be bought unless you have at least one S2 generator.
+> 
+> keep generating stars until you are able to unlock more members.
+    """,
+    """
+you press the "S2" button. suddenly, another girl appears next to you. the screen then lights up again.
+
+> jeong hyerin, you have been chosen to become the second big S, or S2. out of many small s in the world, you are the second girl we discovered with the special ability to make S.
+> 
+> your job now is to generate as many S1 generators as possible. with yoon seoyeon, or S1, you will soon unlock 6 other S.
+> 
+> i will see you then.
+
+"b-but," you stutter, "who are you? and why are we here? how did you find us?"
+
+> my name is SUAH. we at MODHAUS searched far and wide through years and years of extensive research to find the 24 special girls who have the special ability.
+> 
+> your purpose will soon be made clear.
+
+and with that, the screen goes blank again.
+    """,
+    f"""
+after a few minutes of grinding, you finally have enough S to introduce S8 into the room, which the 7 of you have affectionately nicknamed the HAUS, despite it being a "room" and not a "house". 
+
+at this point, five other members have been revealed. 
+S3 lee jiwoo,
+S4 kim chaeyeon,
+S5 kim yooyeon,
+S6 kim soomin,
+and S7 kim nakyoung.
+
+the 7 of you have been hard at work, and have produced S in a rather short amount of time.
+
+"here goes nothing!" you quickly press the "S8" button, and the eighth girl walks in.
+
+"hi...uh..." S8 walks in and waves shyly. "my name's gong yubin. do you guys know why we're here?"
+
+"don't worry too much about that yet. SUAH will be here any minute..." hyerin mutters.
+
+"SUAH? who's SUAH?" jiwoo asks.
+
+"you'll see." you sit the last girl down in front of the screen as it lights up once again.
+
+> greetings, seoyeon and hyerin. i see you have gathered the next 6 girls. good job.
+> 
+> to the other 6 of you, welcome. my name is SUAH, and i am an AI representative of MODHAUS, the secret organisation that has brought you all here.
+> 
+> as i told seoyeon and hyerin earlier, we at MODHAUS searched far and wide through years and years of extensive research to find the 24 special girls who have the special ability to produce S.
+> 
+> at the moment, we have only found the 8 of you, although many more are on the way.
+> 
+> right now, your task is to get to 1.333e33 S. such huge amounts of S are at the very limit of our capacity, so the S will combust and cause what is called a grand gravity, your first prestige layer. 
+> 
+> i will see you then.
+
+"'prestige layer'...? this sounds like an idle game," hyerin remarked.
+
+"that's because it is, you idiot." nakyoung deadpanned.
+
+"is no one going to talk about how SUAH said that the S will combust?" soomin's face was filled with worry.
+
+"we need to get out of here ASAP!" chaeyeon darted a few hurried glances around the room, looking for an exit.
+
+"do any of you have matches? we might be able to burn the place down." jiwoo shouted.
+
+"I HAVE A PACK!" yooyeon tossed her pack of matches over, but yubin swiftly caught it.
+
+"YOU'RE JUST GOING TO MAKE THE S COMBUST EVEN MORE! AND WE PROBABLY WON'T BE ABLE TO GET OUT OF HERE ANYWAY!" she screamed in jiwoo and yooyeon's faces.
+
+"ooh, new girl's got an temper..." nakyoung subtly placed her hand over her mouth.
+
+"ALRIGHT EVERYONE!" seoyeon clapped her hands to gather everyone's attention, exasperated. "we need to stay here and finish all of this so we can get out. we're going to have to trust SUAH and MODHAUS on this one. now everyone get back to work!"
+    """
+]
+
+def lastdim(iuid, generator):
+    data = json.load(open("data.json", "r"))
+    data = data[str(iuid)]["game"][generator]
+    for x in range(8):
+        if data[f"gen{x+1}"]["bought"] == 0:
+             return x
+    return 7
+
+def autoformat(num):
+    num = math.floor(num)
+    if num >= 1000:
+        return "{:.3E}".format(num).replace("E+0", "e").replace("E+", "e")
+    else:
+        return str(num)
+
+def prnt(iuid, generator):
+    data = json.load(open("data.json", "r"))
+    data = data[str(iuid)]["game"]
+    if data[generator]["amount"] < 24**24:
+        table = [["generator", "member", "number", "cost"]]
+        for x in range(8):
+            if x <= lastdim(iuid):
+                table.append([f"{generator}{x+1}", f"{tS[x]}", autoformat(data[generator][f"gen{x+1}"]["total"]), autoformat((2**(x+1))**(data[generator][f"gen{x+1}"]["bought"]+x+1))])
+        amount = autoformat(data[generator]["amount"])
+        ps = autoformat(data[generator]["/s"])
+        minutes, seconds = divmod(data["time"], 60)
+        hours, minutes = divmod(minutes, 60)
+        hours, minutes, seconds = [f"0{x}" if x < 10 else str(x) for x in (hours, minutes, seconds)]
+        time = f"\n\n{hours}:{minutes}:{seconds}"
+        boosts = f"\n\nboosts:\n2^{lastdim(iuid)+1} for {lastdim(iuid)+1} big S"
+        if lastdim(iuid) == 7:
+            boosts += f"\n8^{data[generator]}"
+        return f"you have {amount} {generator}. ({ps} {generator}/s)\n" + tabulate(table) + time + boosts
+    else:
+        return f"you have reached the first grand gravity prestige layer. press the 'grand gravity' button to continue."
+
+def tick(iuid, generator):
+    data = json.load(open("data.json", "r"))
+    data = data[str(iuid)]["game"]
+    data[generator]["amount"] += data[generator][f"gen1"]["total"]*(2**(lastdim(iuid)+1))
+    data[generator]["/s"] = data[generator][f"gen1"]["total"]*(2**(lastdim(iuid)+1))
+    for x in range(7):
+        data[generator][f"gen{x+1}"]["total"] += data[generator][f"gen{x+2}"]["total"]
+    json.dump(data, open("data.json", "w"), indent=4)
+    return data
+
+def ps(data):
+    st = data["story"]
+    if data["game"]["S"]["gen1"]["bought"] > 0:
+        st = max([data["story"], 1])
+    if data["game"]["S"]["gen2"]["bought"] > 0:
+        st = max([data["story"], 2])
+    if data["game"]["S"]["gen8"]["bought"] > 0:
+        st = max([data["story"], 3])
+
+    return f"**chapter {st}**\n" + story[st]
+
+# the command
+@bot.tree.command(name="generation", description="play")
+async def generation(interaction, generator: str):
+    iuid = str(interaction.user.id)
+    global story
+
+    #try:
+    data = json.load(open("data.json", "r"))
+    try:
+        data[iuid]
+    except:
+        data[iuid] = {
+            "game": {
+                "S": {
+                    "amount": 2,
+                    "/s": 0
+                },
+                "como": {
+                    "amount": 0,
+                    "/s": 0,
+                },
+                "tickspeed": 1,
+                "time": 0,
+                "objekts": {}
+            },
+            "story": 0
+        }
+        for generator in data[iuid]["game"]:
+            if type(data[iuid]["game"][generator]) == dict:
+                for x in range(8):
+                    data[iuid]["game"][generator][f"gen{x+1}"] = {
+                        "total": 0,
+                        "bought": 0,
+                    }
+        for x in range(8):
+            data[iuid]["game"]["objekts"][f"S{x+1}"] = []
+
+        json.dump(data, open("data.json", "w"), indent=4)
+    
+    match generator:
+        case "S":
+            dt = data[iuid]
+            game = dt["game"]
+            embed = discord.Embed(title=f"{interaction.user.display_name} ({interaction.user.name})'s S dimenSSSions", description=ps(dt)+f"\n```{prnt(iuid, generator)}```")
+            await interaction.response.send_message(embed=embed,view=SButtons())
+            ogr = await interaction.original_response()
+            while 1:
+                await asyncio.sleep(1)
+                game = tick(str(iuid), generator)
+                dt["game"] = game
+                dt["game"]["time"] += 1
+                data[iuid] = dt
+                json.dump(data, open("data.json", "w"), indent=4)
+                embed = discord.Embed(title=f"{interaction.user.display_name} ({interaction.user.name})'s S dimenSSSions", description=ps(dt)+f"\n```{prnt(iuid, generator)}```")
+                try:
+                    await ogr.edit(embed=embed,view=SButtons())
+                except:
+                    await interaction.followup.send(embed=embed,view=SButtons())
+        case "como":
+            dt = data[iuid]
+            game = dt["game"]
+            embed = discord.Embed(title=f"{interaction.user.display_name} ({interaction.user.name})'s como dimenSSSions", description=ps(dt)+f"\n```{prnt(iuid, generator)}```")
+            await interaction.response.send_message(embed=embed,view=CButtons())
+            ogr = await interaction.original_response()
+            while 1:
+                await asyncio.sleep(1)
+                game = tick(str(iuid), generator)
+                dt["game"] = game
+                dt["game"]["time"] += 1
+                data[iuid] = dt
+                json.dump(data, open("data.json", "w"), indent=4)
+                embed = discord.Embed(title=f"{interaction.user.display_name} ({interaction.user.name})'s como dimenSSSions", description=ps(dt)+f"\n```{prnt(iuid, generator)}```")
+                try:
+                    await ogr.edit(embed=embed,view=SButtons())
+                except:
+                    await interaction.followup.send(embed=embed,view=CButtons())
+        case _:
+            await interaction.response.send_message(embed=error_embed("generator"))
+    #except:
+    #    pass
+    #finally:
+    #    json.dump(data, open("data.json", "w"), indent=4)
+
+
+bot.run(TOKEN)
