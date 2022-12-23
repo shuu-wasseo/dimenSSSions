@@ -86,7 +86,13 @@ class GDropdown(discord.ui.Select):
         await ogr.edit(embed=embed,view=buttons)
         if str(iuid) == str(self.iuid):
             while 1:
-                for gen in ["S", "como"]:
+                dat = imdata()[iuid]
+                gens = ["S"]
+                if dat["prestige"]["ggrav"] > 0:
+                    gens.append("como")
+                if dat["prestige"]["egrav"] > 0:
+                    gens.append("Σ")
+                for gen in gens:
                     dat = imdata()[iuid]
                     generator = ddms[iuid]["gen"]["opt"]
                     buttons = SButtons(iuid) if generator == "S" else CButtons(iuid)
@@ -650,13 +656,13 @@ defdic = {
 }
 
 for generator in defdic:
-    if generator in ["S", "como"]:
-        for x in range(8):
+    if generator in ["S", "como", "Σ"]:
+        for x in range(10):
             defdic[generator][f"gen{x+1}"] = {
                 "total": 0,
                 "bought": 0,
             }
-for x in range(8):
+for x in range(10):
     defdic["objekts"][f"S{x+1}"] = []
 
 def lastdim(iuid, generator):
@@ -957,28 +963,28 @@ def ordinal(num):
 @bot.tree.command(name="generation", description="play")
 async def generation(interaction):
     await interaction.response.defer()
-    #try:
-    global defdic 
-    data = imdata()
-    iuid = str(interaction.user.id)
     try:
-        data[iuid]
-    except:
-        defdic["start"] = str(dt.now())
-        defdic["access"] = str(dt.now())
-        data[iuid] = defdic 
-        exdata(data)
+        global defdic 
+        data = imdata()
+        iuid = str(interaction.user.id)
+        try:
+            data[iuid]
+        except:
+            defdic["start"] = str(dt.now())
+            defdic["access"] = str(dt.now())
+            data[iuid] = defdic 
+            exdata(data)
 
-    try:
-        ddms[iuid]
-    except:
-        ddms[iuid] = {"gen": {"msg": [], "opt": []}, "challs": {"msg": [], "opt": []}}
+        try:
+            ddms[iuid]
+        except:
+            ddms[iuid] = {"gen": {"msg": [], "opt": []}, "challs": {"msg": [], "opt": []}}
 
-    embed = discord.Embed(title=f"{interaction.user.display_name} ({interaction.user.name})'s generation.SSS", description=f"pick a generator type to proceed.")
-    await interaction.followup.send(embed=embed, view=GDView(iuid))
-    ddms[iuid]["gen"]["msg"].append(await interaction.original_response())
-    #except:
-    #    pass
+        embed = discord.Embed(title=f"{interaction.user.display_name} ({interaction.user.name})'s generation.SSS", description=f"pick a generator type to proceed.")
+        await interaction.followup.send(embed=embed, view=GDView(iuid))
+        ddms[iuid]["gen"]["msg"].append(await interaction.original_response())
+    except:
+        pass
 
 @bot.tree.command(name="objekts", description="view objekts")
 async def objekts(interaction):
@@ -1188,7 +1194,9 @@ async def viewprof(interaction):
     image = game["profile"]["image"]
 
     embed = discord.Embed(title=f"{interaction.user.display_name} ({interaction.user.name})'s profile", description=f"{bio}") 
-    
+   
+    embed.set_thumbnail(url=interaction.user.avatar)
+
     fields = {
         "S": f"{autoformat(game['S']['amount'])} ({autoformat(game['S']['/s'])}/s)"
     }
@@ -1211,7 +1219,7 @@ async def viewprof(interaction):
         fields = {**fields, **ggravf}
 
     #if game["prestige"]["egrav"] > 0:
-    else:
+    if 1 == 2:
         ggravf = {
             "Σ": f"{autoformat(game['Σ']['amount'])} ({autoformat(game['Σ']['/s'])}/s)",
             "event gravities": autoformat(game["prestige"]["egrav"]),
