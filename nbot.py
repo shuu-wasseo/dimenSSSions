@@ -80,7 +80,13 @@ class GDropdown(discord.ui.Select):
         await ogr.edit(embed=embed,view=buttons)
         if str(iuid) == str(self.iuid):
             while 1:
-                for gen in ["S", "como"]:
+                dat = imdata()[iuid]
+                gens = ["S"]
+                if dat["prestige"]["ggrav"] > 0:
+                    gens.append("como")
+                if dat["prestige"]["egrav"] > 0:
+                    gens.append("Σ")
+                for gen in gens:
                     dat = imdata()[iuid]
                     generator = ddms[iuid]["gen"]["opt"]
                     buttons = SButtons(iuid) if generator == "S" else CButtons(iuid)
@@ -515,7 +521,7 @@ challs = {
         ["regravitation breakdown", "como generators are disabled. Σ generators produce S8 generators."],
         ["complete breakdown", "como and Σ generators are both disabled. S production is boosted by the number of event gravities."],
         ["double 2sys generation", "each generator produces the generator two tiers below. if not available, produces S / como power."],
-        ["double 2sys generation\n(DIMENSION ver.)", "each generator produces the nearest lower-tier generator in the same subunit. if not available, produces S / como power. S9/como9 generators produce S6/como6 generators while S10/como10 generators produce S6/como6 generators."],
+        ["double 2sys generation\n(DIMENSION ver.)", "each generator produces the nearest lower-tier generator in the same subunit. if not available, produces S / como power. S9/como9 generators produce S6/como6 generators while S10/como10 generators produce S8/como8 generators."],
         ["double 2sys generation\n(DIMENSION ver., hard mode)", "each generator produces the nearest lower-tier generator in the same subunit. if not available, produces S / como power. (S9/como9 and S10/como10 generators produce S/como power as well.)"],
         ["age-neration", "generators generate the generator of the next youngest member. the youngest member (soomin, S6/como6) generates S / como power.\norder of member numbers from oldest to youngest: 5, 7, 10, 1, 4, 8, 3, 9, 2, 6"]
     ]
@@ -810,28 +816,59 @@ async def milli(game, generator, iuid, ticks, interaction, start):
     gen8b = game["S"]["gen8"]["bought"]
     boosts = 1
     if generator == "S":
-        boosts *= Decimal(8**(lastdim(iuid, generator)))*(Decimal(24)**Decimal(gen8b))*(Decimal(game["como"]["power"])**Decimal(1/8))
+        boosts *= Decimal(8**(lastdim(iuid, generator)))*(Decimal(24)**Decimal(gen8b))
+    if (generator == "S" and int(game["inchallenge"]["egrav"]) == 4) or generator == "como":
+        boosts *= Decimal(game["Σ"]["power"])**Decimal(1/8)
+    elif generator == "S" and int(game["inchallenge"]["egrav"]) == 6:
+        boosts *= Decimal(game["prestige"]["egrav"])**10
+    elif generator == "S" and int(game["inchallenge"]["egrav"]) not in [5]:
+        boosts *= Decimal(game["como"]["power"])**Decimal(1/8)
     tnews = 0
     start = dt.now()
     for n in range(ticks):
         game = imdata()[iuid]
+        agelist = [5, 7, 10, 1, 4, 8, 3, 9, 2, 6]
         for x in range(8 if game["story"] < 5 else 10):
-            if int(game["inchallenge"]["ggrav"]) == 7 and generator == "S" and x < 8:
-                if x in [0, 1]:
-                    news = Decimal(((game[generator][f"gen{x+1}"]["total"])*(boosts)*Decimal('0.001'))*(Decimal(25/24)**(game[generator][f"gen{x+1}"]["bought"])) if game["inchallenge"]["ggrav"] != 2 else (game[generator][f"gen1"]["total"])**Decimal(Decimal('0.01')*(game["time"])**Decimal('1.0038065'))*Decimal('0.001'))
+            if int(game["inchallenge"]["egrav"]) == 3 and (x, generator) in [(6, "S"), (7, "S"), (0, "como"), (0, "Σ")]:
+                if generator == "S":
+                    match x:
+                        case 6:
+                            new = game["como"][f"gen1"]["total"]*(Decimal(25/24)**Decimal(game["como"][f"gen1"]["bought"]))
+                        case 7:
+                            new = game["como"][f"gen1"]["total"]*(Decimal(25/24)**Decimal(game["como"][f"gen1"]["bought"]))
+                        case _:
+                            new = 1
                     if game["inchallenge"]["ggrav"] == 6:
-                        news *= game["challenges"]["gdgc6"][x]
+                        new *= Decimal(game["challenges"]["gdgc6"][x])
+                    game[generator][f"gen{x}"]["total"] += Decimal(new)*Decimal('0.001')
+            elif int(game["inchallenge"]["egrav"]) == 10:
+                if x == 0:
+                    news = max(Decimal(game[generator][f"gen{agelist[x]}"]["total"])*Decimal(boosts)*Decimal('0.001') if game["inchallenge"]["ggrav"] != 2 else Decimal(game[generator][f"gen{agelist[x]}"]["total"])**Decimal(Decimal('0.01')*Decimal(game["time"])**Decimal('1.0038065'))*Decimal('0.001')*Decimal(25/24)**Decimal(game[generator][f"gen{agelist[x]}"]["bought"]), 0.001)
+                    news = Decimal(news)
+                    if game["inchallenge"]["ggrav"] == 6:
+                        news *= Decimal(game["challenges"]["gdgc6"][x])
+                    game[generator]["/s"] = news
+                    tnews += news
+                else:
+                    if game["inchallenge"]["ggrav"] == 4 and x in [6, 7] and generator == "S":
+                        game[generator][f"gen{agelist[x]}"] = {"total": 0, "bought": 0}
+                    else:
+                        new = game[generator][f"gen{agelist[x]}"]["total"]*(game["challenges"]["gdgc6"][x] if game["inchallenge"]["ggrav"] == 6 else 1)*(Decimal(25/24)**Decimal(game[generator][f"gen{agelist[x]}"]["bought"]))
+                        game[generator][f"gen{agelist[x]}"]["total"] += Decimal(new)*Decimal('0.001')
+            elif int(game["inchallenge"]["egrav"]) == 2 and x >= 4:
+                game[generator][f"gen{x+1}"] = {"total": 0, "bought": 0}
+            elif (int(game["inchallenge"]["ggrav"]) == 7 and generator == "S" and x < 8) or (int(game["inchallenge"]["egrav"]) == 7 and generator in ["S", "como"]):
+                if x in [0, 1]:
+                    news = Decimal((Decimal(game[generator][f"gen{x+1}"]["total"])*(boosts)*Decimal('0.001'))*(Decimal(25/24)**(game[generator][f"gen{x+1}"]["bought"])) if game["inchallenge"]["ggrav"] != 2 else (game[generator][f"gen1"]["total"])**Decimal(Decimal('0.01')*(game["time"])**Decimal('1.0038065'))*Decimal('0.001'))
                     game[generator]["/s"] = news*2
                     tnews += news
                 else:
                     game[generator][f"gen{x-1}"]["total"] += (game[generator][f"gen{x+1}"]["total"]*Decimal('0.001')*Decimal((game["challenges"]["gdgc6"][x]) if (game["inchallenge"]["ggrav"]) == 6 else 1)*(Decimal(25/24)**(game[generator][f"gen{x+1}"]["bought"])))
-            elif int(game["inchallenge"]["ggrav"]) == 8 and generator == "S" and x < 8:
-                aaa = [2, 5, 7, 8]
-                kre = [1, 3, 4, 6]
-                if x+1 in [s[0] for s in [aaa, kre]]:
+            elif (int(game["inchallenge"]["ggrav"]) == 8 and generator == "S" and x < 8) or (int(game["inchallenge"]["egrav"]) in [8, 9] and generator in ["S", "como"]):
+                aaa = [2, 5, 7, 8, 10]
+                kre = [1, 3, 4, 6, 9]
+                if x+1 in [s[0] for s in [aaa, kre]] or (int(game["inchallenge"]["egrav"]) == 9 and x+1 in [s[0] for s in [aaa, kre]] + [s[-1] for s in [aaa, kre]]):
                     news = Decimal((Decimal(game[generator][f"gen{x+1}"]["total"])*Decimal(boosts)*Decimal('0.001'))*(Decimal(25/24)**Decimal(game[generator][f"gen{x+1}"]["bought"])) if game["inchallenge"]["ggrav"] != 2 else Decimal(game[generator][f"gen1"]["total"])**Decimal(Decimal('0.01')*Decimal(game["time"])**Decimal('1.0038065'))*Decimal('0.001'))
-                    if game["inchallenge"]["ggrav"] == 6:
-                        news *= game["challenges"]["gdgc6"][x]
                     game[generator]["/s"] = news
                     tnews += news
                 else:
@@ -850,7 +887,7 @@ async def milli(game, generator, iuid, ticks, interaction, start):
                             news *= Decimal(game["challenges"]["gdgc6"][x])
                         game[generator]["/s"] = news
                         tnews += news
-                    elif generator == "como":
+                    else:
                         tnews += game["como"]["gen1"]["total"]*(Decimal(25/24)**Decimal(game[generator][f"gen{x+1}"]["bought"]))
                 else:
                     if game["inchallenge"]["ggrav"] == 4 and x in [6, 7] and generator == "S":
@@ -1234,12 +1271,15 @@ async def credits(interaction):
         ["each dimension produces the dimension below", "antimatter dimensions (and FE000000)"],
         ["como generators", "antimatter dimensions (and FE000000)"],
         ["autobuyers", "antimatter dimensions (and FE000000)"],
-        ["gdgc 2"], ["AD challenge 3"],
-        ["gdgc 3"], ["AD challenge 4"],
-        ["gdgc 4"], ["AD challenge 10"],
-        ["gdgc 5"], ["FE000000 challenge 5"],
-        ["gdgc 6"], ["AD challenge 7"],
-        ["gdgc 7, 8"], ["AD challenge 12"]
+        ["gdgc2", "AD challenge 3"],
+        ["gdgc3", "AD challenge 4"],
+        ["gdgc4", "AD challenge 10"],
+        ["gdgc5", "FE000000 challenge 5"],
+        ["gdgc6", "AD challenge 7"],
+        ["gdgc7-8, etgc7-9", "AD challenge 12"],
+        ["etgc2", "AD eternity challenge 3"],
+        ["etgc3, 5", "AD eternity challenge 7"],
+        ["etgc4", "AD eternity challenge 2"]
     ]
     for x in fields:
         embed.add_field(name=x[0], value=x[1])
