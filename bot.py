@@ -9,8 +9,7 @@ from discord import app_commands
 from dotenv import load_dotenv
 from tabulate import tabulate
 from datetime import datetime as dt
-from datetime import timedelta
-from datetime import date
+from datetime import timedelta, date
 import random
 import asyncio
 from decimal import Decimal
@@ -41,6 +40,12 @@ class MyClient(discord.Client):
         #self.tree.add_command(self.tree.get_command("challenges"), override=True)
         for x in ddms:
             ddms[x] = {"gen": {"msg": [], "opt": []}, "challs": {"msg": [], "opt": []}}
+        data = imdata()
+        for user in data:
+            for generator in ["como", "S"]:
+                for n in [9, 10]:
+                    data[user][generator][f"gen{n}"] = {"total": 0, "bought": 0}
+        exdata(data)
         await self.tree.sync()
 
 class error_embed(discord.Embed):
@@ -80,7 +85,11 @@ class GDropdown(discord.ui.Select):
         await ogr.edit(embed=embed,view=buttons)
         if str(iuid) == str(self.iuid):
             while 1:
-                for gen in ["S", "como"]:
+                dat = imdata()[iuid]
+                gens = ["S"]
+                if dat["prestige"]["ggrav"] > 0:
+                    gens.append("como")
+                for gen in gens:
                     dat = imdata()[iuid]
                     generator = ddms[iuid]["gen"]["opt"]
                     buttons = SButtons(iuid) if generator == "S" else CButtons(iuid)
@@ -116,7 +125,7 @@ class SButtons(discord.ui.View):
     async def click(self, x, int):
         data = imdata()
         game = data[str(int.user.id)]
-        price = ((2**(x))**(game["S"][f"gen{x}"]["bought"]+x))**(1 if not (game["inchallenge"]["ggrav"] == 5 and x == 1) else 2)
+        price = (Decimal(2**(x))**Decimal(game["S"][f"gen{x}"]["bought"]+x))**Decimal(1 if not (game["inchallenge"]["ggrav"] == 5 and x == 1) else 2)
         if str(int.user.id) == str(self.iuid):
             if game["S"]["amount"] >= price:
                 game["S"]["amount"]-= price
@@ -169,7 +178,7 @@ class SButtons(discord.ui.View):
         game = data[iuid]
         if str(interaction.user.id) == str(self.iuid):
             for x in range((6 if game["inchallenge"]["ggrav"] == 4 else 8), 0, -1):
-                price = ((2**(x))**(game["S"][f"gen{x}"]["bought"]+x))**(2 if (game["inchallenge"]["ggrav"] == 5 and x != 1) else 1)
+                price = (Decimal(2**(x))**Decimal(game["S"][f"gen{x}"]["bought"]+x))**Decimal(2 if (game["inchallenge"]["ggrav"] == 5 and x != 1) else 1)
                 while game["S"]["amount"] >= price:
                     game["S"]["amount"] -= price
                     game["S"][f"gen{x}"]["total"] += 1
@@ -178,7 +187,7 @@ class SButtons(discord.ui.View):
                     if game["inchallenge"]["ggrav"] == 3:
                         for x in range(x-1, 0, -1):
                             game["S"][f"gen{x}"] = {"total": 0, "bought": 0}
-                    price = ((2**(x))**(game["S"][f"gen{x}"]["bought"]+x))**(2 if (game["inchallenge"]["ggrav"] == 5 and x != 1) else 1)
+                    price = (Decimal(2**(x))**Decimal(game["S"][f"gen{x}"]["bought"]+x))**Decimal(2 if (game["inchallenge"]["ggrav"] == 5 and x != 1) else 1)
             for x in range(10):
                 exdata(await tick(str(iuid), "S", 1, interaction, dt.now()))
                 await asyncio.sleep(0.001)
@@ -241,8 +250,8 @@ class CButtons(discord.ui.View):
         data = imdata()
         dt = data[str(int.user.id)]
         game = dt
-        if game["como"]["amount"] >= (2**(x))**(game["como"][f"gen{x}"]["bought"]+x):
-            game["como"]["amount"] -= (2**(x))**(game["como"][f"gen{x}"]["bought"]+x)
+        if game["como"]["amount"] >= Decimal(2**(x))**Decimal(game["como"][f"gen{x}"]["bought"]+x):
+            game["como"]["amount"] -= Decimal(2**(x))**Decimal(game["como"][f"gen{x}"]["bought"]+x)
             game["como"][f"gen{x}"]["total"] += 1
             game["como"][f"gen{x}"]["bought"] += 1
             data[str(int.user.id)] = game
@@ -285,13 +294,13 @@ class CButtons(discord.ui.View):
         dt = data[iuid]
         game = dt
         for x in range(8, 0, -1):
-            price = (2**(x))**(game["como"][f"gen{x}"]["bought"]+x)
+            price = Decimal(2**(x))**Decimal(game["como"][f"gen{x}"]["bought"]+x)
             while game["como"]["amount"] >= price:
                 game["como"]["amount"] -= price
                 game["como"][f"gen{x}"]["total"] += 1
                 game["como"][f"gen{x}"]["bought"] += 1
                 data[iuid] = game
-                price = (2**(x))**(game["como"][f"gen{x}"]["bought"]+x)
+                price = Decimal(2**(x))**Decimal(game["como"][f"gen{x}"]["bought"]+x)
         exdata(data)
         pr = prnt(iuid, "como")
         embed = discord.Embed(title=f"{interaction.user.display_name} ({interaction.user.name})'s generation.SSS", description=ps(data, iuid)+f"\n```{pr}```")
@@ -461,6 +470,8 @@ challs = {
         ["two-system generation\n(DIMENSION ver.)", "each generator produces the nearest lower-tier generator in the same subunit. if not available, produces S."]
     ]
 }
+
+hlink = r"||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||"
 
 story = {
     """
@@ -642,13 +653,13 @@ defdic = {
 }
 
 for generator in defdic:
-    if generator in ["S", "como"]:
-        for x in range(8):
+    if generator in ["S", "como", "Σ"]:
+        for x in range(10):
             defdic[generator][f"gen{x+1}"] = {
                 "total": 0,
                 "bought": 0,
             }
-for x in range(8):
+for x in range(10):
     defdic["objekts"][f"S{x+1}"] = []
 
 def lastdim(iuid, generator):
@@ -661,6 +672,11 @@ def lastdim(iuid, generator):
 
 def autoformat(num, dec=False):
     try:
+        num = float(num)
+    except:
+        num = int(num)
+
+    try:
         if dec:
             num = round(num, 3)
         else:
@@ -668,20 +684,22 @@ def autoformat(num, dec=False):
             num = int(num) if num % 1 == 0 else num
     except:
         pass
-    if num >= 1000000:
-        num = str(num)
+    val = num
+    num = str(num)
+    if val >= 1000000:
         if "e+" not in num:
             e = len(num.split(".")[0])-1
-            return f"{num[0]}.{num[1:4]}e{e}"
+            num = f"{num[0]}.{num[1:4]}e+{e}"
         else:
-            return f"{num[0]}.{num[2:5]}e+{num.split('e+')[1]}"
-    else:
-        return str(num)
-
+            num = f"{num[0]}.{num[2:5]}e+{num.split('e+')[1]}"
+    while len(num.split(".")[-1]) < 3 and "." in num:
+        num += "0"
+    return num
+    
 def prnt(iuid, generator):
     data = imdata()
     dat = data[str(iuid)]
-    if dat[generator]["amount"] < 24**24:
+    if not (dat["S"]["amount"] >= 24**24 and generator == "S"):
         table = []
         for x in range(8):
             if (x <= lastdim(iuid, generator)+1) and not (dat["inchallenge"]["ggrav"] == 4 and x in [6, 7]) and not (dat[generator][f"gen1"]["total"] == 0 and x == 1):
@@ -692,34 +710,21 @@ def prnt(iuid, generator):
                     atbitv = str(min(wait.seconds, 2**(9-len(dat["objekts"][memb])))) + "s"
                 except:
                     atbitv = "none"
-                table.append([f"{generator}{x+1}", f"{tS[x]}", autoformat(dat[generator][f"gen{x+1}"]["total"]) + " (" + autoformat(dat[generator][f"gen{x+1}"]["bought"], dec=False) + ")", autoformat(((2**(x+1))**(dat[generator][f"gen{x+1}"]["bought"]+x+1))**(2 if (dat["inchallenge"]["ggrav"] == 5 and x != 0) else 1))] + ([atbitv] if generator == "S" else []))
+                table.append([f"{generator}{x+1}", f"{tS[x]}", autoformat(dat[generator][f"gen{x+1}"]["total"]) + " (" + autoformat(dat[generator][f"gen{x+1}"]["bought"], dec=False) + ")", autoformat((Decimal(2**(x+1))**Decimal(dat[generator][f"gen{x+1}"]["bought"]+x+1))**Decimal(2 if (dat["inchallenge"]["ggrav"] == 5 and x != 0) else 1))] + ([atbitv] if generator == "S" else []))
         amount = autoformat(dat[generator]["amount"]) 
         ps = autoformat(dat[generator]["/s"])
-        boostab = []
-        if generator == "S":
-            boostab.append([f"\n8^{lastdim(iuid, generator)} ({autoformat(8**(lastdim(iuid, generator)))})", f"{lastdim(iuid, generator)+1} big S"])
-            if lastdim(iuid, "S") == 7:
-                gen8b = dat["S"]["gen8"]["bought"]
-                boostab.append([f"\n24^{gen8b} ({autoformat(24**gen8b)})", f"{autoformat(gen8b)} S8 generators bought"])
-        if dat["prestige"]["ggrav"] > 0 and generator == "S":
-            boostab.append([autoformat(dat["como"]["power"]) + f"^0.125 ({autoformat(dat['como']['power']**0.125)})", "como generators"])
         if dat["inchallenge"]["ggrav"] == 0:
             challenge = "you are not in any challenge.\n\n"
         else:
             inggravc = dat["inchallenge"]["ggrav"]
             challenge = f"you are in challenge {inggravc}.\n\n"
-            if dat["inchallenge"]["ggrav"] == 2:
-                boostab.append([autoformat(0.01*(dat["time"]**1.0038065)), "gdgc2"])
-            elif dat["inchallenge"]["ggrav"] == 6:
-                for x in range(8):
-                    boostab.append([autoformat(dat["challenges"]["gdgc6"][x], dec=True) + f" (S{x+1})", "gdgc6"])
         pgenerator = generator if generator != "como" else "como power"
         comoa = autoformat(dat["como"]["power"])
         if generator == "como":
             amounts = f"you have {comoa} {pgenerator}. ({ps} {pgenerator}/s)\n" + (f"you have {amount} como.\n")
         else:
             amounts = f"you have {amount} {pgenerator}. ({ps} {pgenerator}/s)\n"
-        return amounts + challenge + tabulate(table, headers=["gen", "member", "amount", f"cost ({generator})"] + (["autobuy"] if generator == "S" else [])) + f"\n\nmultipliers:\n" + tabulate(boostab, headers=["value", "source"])
+        return amounts + challenge + tabulate(table, headers=["gen", "member", "amount", f"cost ({generator})"] + (["autobuy"] if generator == "S" else []))
     else:
         return f"your S has combusted and caused a grand gravity. press the 'grand gravity' button to continue."
 
@@ -730,26 +735,26 @@ async def milli(game, generator, iuid, ticks, interaction, start):
     gen8b = game["S"]["gen8"]["bought"]
     boosts = 1
     if generator == "S":
-        boosts *= (8**(lastdim(iuid, generator)))*(24**gen8b)*(game["como"]["power"]**(1/8))
-    tnews = 0
+        boosts *= Decimal(8**(lastdim(iuid, generator)))*(Decimal(24)**Decimal(gen8b))*(Decimal(game["como"]["power"])**Decimal(1/8))
+    tnews = Decimal(0)
     start = dt.now()
     for n in range(ticks):
         game = imdata()[iuid]
-        for x in range(8):
-            if game["inchallenge"]["ggrav"] == 7 and generator == "S":
+        for x in range(8 if game["story"] < 5 else 10):
+            if int(game["inchallenge"]["ggrav"]) == 7 and generator == "S" and x < 8:
                 if x in [0, 1]:
-                    news = (game[generator][f"gen{x+1}"]["total"]*boosts*0.001)*((25/24)**game[generator][f"gen{x+1}"]["bought"]) if game["inchallenge"]["ggrav"] != 2 else game[generator][f"gen1"]["total"]**(0.01*game["time"]**1.0038065)*0.001
+                    news = Decimal(((game[generator][f"gen{x+1}"]["total"])*(boosts)*Decimal('0.001'))*(Decimal(25/24)**(game[generator][f"gen{x+1}"]["bought"])) if game["inchallenge"]["ggrav"] != 2 else (game[generator][f"gen1"]["total"])**Decimal(Decimal('0.01')*(game["time"])**Decimal('1.0038065'))*Decimal('0.001'))
                     if game["inchallenge"]["ggrav"] == 6:
                         news *= game["challenges"]["gdgc6"][x]
                     game[generator]["/s"] = news*2
                     tnews += news
                 else:
-                        game[generator][f"gen{x-1}"]["total"] += game[generator][f"gen{x+1}"]["total"]*0.001*(game["challenges"]["gdgc6"][x] if game["inchallenge"]["ggrav"] == 6 else 1)*((25/24)**game[generator][f"gen{x+1}"]["bought"])
-            elif game["inchallenge"]["ggrav"] == 8 and generator == "S":
+                    game[generator][f"gen{x-1}"]["total"] += (game[generator][f"gen{x+1}"]["total"]*Decimal('0.001')*Decimal((game["challenges"]["gdgc6"][x]) if (game["inchallenge"]["ggrav"]) == 6 else 1)*(Decimal(25/24)**(game[generator][f"gen{x+1}"]["bought"])))
+            elif int(game["inchallenge"]["ggrav"]) == 8 and generator == "S" and x < 8:
                 aaa = [2, 5, 7, 8]
                 kre = [1, 3, 4, 6]
                 if x+1 in [s[0] for s in [aaa, kre]]:
-                    news = (game[generator][f"gen{x+1}"]["total"]*boosts*0.001)*((25/24)**game[generator][f"gen{x+1}"]["bought"]) if game["inchallenge"]["ggrav"] != 2 else game[generator][f"gen1"]["total"]**(0.01*game["time"]**1.0038065)*0.001
+                    news = Decimal((Decimal(game[generator][f"gen{x+1}"]["total"])*Decimal(boosts)*Decimal('0.001'))*(Decimal(25/24)**Decimal(game[generator][f"gen{x+1}"]["bought"])) if game["inchallenge"]["ggrav"] != 2 else Decimal(game[generator][f"gen1"]["total"])**Decimal(Decimal('0.01')*Decimal(game["time"])**Decimal('1.0038065'))*Decimal('0.001'))
                     if game["inchallenge"]["ggrav"] == 6:
                         news *= game["challenges"]["gdgc6"][x]
                     game[generator]["/s"] = news
@@ -760,30 +765,30 @@ async def milli(game, generator, iuid, ticks, interaction, start):
                         if x+1 in s:
                             subu = s
                             break
-                    game[generator][f"gen{subu[subu.index(x+1)-1]}"]["total"] += game[generator][f"gen{x+1}"]["total"]*0.001*(game["challenges"]["gdgc6"][x] if game["inchallenge"]["ggrav"] == 6 else 1)*((25/24)**game[generator][f"gen{x+1}"]["bought"])
+                    game[generator][f"gen{subu[subu.index(x+1)-1]}"]["total"] += Decimal(game[generator][f"gen{x+1}"]["total"]*Decimal('0.001')*(game["challenges"]["gdgc6"][x] if game["inchallenge"]["ggrav"] == 6 else 1)*(Decimal(25/24)**Decimal(game[generator][f"gen{x+1}"]["bought"])))
             else:
                 if x == 0:
                     if generator == "S":
-                        news = max(game[generator][f"gen1"]["total"]*boosts*0.001 if game["inchallenge"]["ggrav"] != 2 else game[generator][f"gen1"]["total"]**(0.01*game["time"]**1.0038065)*0.001*(25/24)**game[generator][f"gen{x+1}"]["bought"], 0.001)
+                        news = max(Decimal(game[generator][f"gen1"]["total"])*Decimal(boosts)*Decimal('0.001') if game["inchallenge"]["ggrav"] != 2 else Decimal(game[generator][f"gen1"]["total"])**Decimal(Decimal('0.01')*Decimal(game["time"])**Decimal('1.0038065'))*Decimal('0.001')*Decimal(25/24)**Decimal(game[generator][f"gen{x+1}"]["bought"]), Decimal('0.001'))
                         if game["inchallenge"]["ggrav"] == 6:
                             news *= game["challenges"]["gdgc6"][x]
                         game[generator]["/s"] = news
                         tnews += news
                     elif generator == "como":
-                        tnews += game["como"]["gen1"]["total"]*((25/24)**game[generator][f"gen{x+1}"]["bought"])
+                        tnews += game["como"]["gen1"]["total"]*(Decimal(25/24)**Decimal(game[generator][f"gen{x+1}"]["bought"]))
                 else:
                     if game["inchallenge"]["ggrav"] == 4 and x in [6, 7] and generator == "S":
                         game[generator][f"gen{x+1}"] = {"total": 0, "bought": 0}
                     else:
-                        new = game[generator][f"gen{x+1}"]["total"]*(game["challenges"]["gdgc6"][x] if game["inchallenge"]["ggrav"] == 6 else 1)*((25/24)**game[generator][f"gen{x+1}"]["bought"])
-                        game[generator][f"gen{x}"]["total"] += new*0.001
-        for x in range(8):
+                        new = game[generator][f"gen{x+1}"]["total"]*(game["challenges"]["gdgc6"][x] if game["inchallenge"]["ggrav"] == 6 else 1)*(Decimal(25/24)**Decimal(game[generator][f"gen{x+1}"]["bought"]))
+                        game[generator][f"gen{x}"]["total"] += Decimal(new)*Decimal('0.001')
+        for x in range(8 if game["story"] < 5 else 10):
             memb = f"S{x+1}"
             try:
                 later = (dt.fromisoformat(game["autobuyers"][memb]) + timedelta(seconds=2**(9-len(game["objekts"][memb]))))
                 if generator + str(x+1) in game["autobuyers"] and start + timedelta(microseconds=1000*n) >= later:
                     while 1:
-                        price = ((2**(x+1))**(game[generator][f"gen{x+1}"]["bought"]+x+1))**(2 if (game["inchallenge"]["ggrav"] == 5 and x != 0) else 1)
+                        price = (Decimal(2**(x+1))**Decimal(game[generator][f"gen{x+1}"]["bought"]+x+1))**Decimal(2 if (game["inchallenge"]["ggrav"] == 5 and x != 0) else 1)
                         game["autobuyers"][memb] = str(dt.now())
                         if game[generator]["amount"] >= price:
                             game[generator]["amount"] -= price
@@ -802,13 +807,15 @@ async def milli(game, generator, iuid, ticks, interaction, start):
                 iuid = str(interaction.user.id)
                 game, objm, objn = ggrav(game)
                 data[iuid] = game
+        tnews = Decimal(str(tnews))
         game[generator]["amount" if generator == "S" else "power"] += tnews
         data[iuid] = game
         exdata(data)
     return game, tnews
 
 def imdata():
-    data = json.load(open("data.json", "r")) 
+    data = json.load(open("data.json", "r"))
+    exdata(data)
     for uid in data:
         game = data[uid]
         for generator in game:
@@ -816,7 +823,12 @@ def imdata():
                 for gen in game[generator]:
                     if gen[:3] == "gen":
                         for x in game[generator][gen]:
-                            game[generator][gen][x] = round(float(game[generator][gen][x]), 3)
+                            game[generator][gen][x] = Decimal(round(float(game[generator][gen][x]), 3))
+                    else:
+                        try:
+                            game[generator][gen] = Decimal(round(float(game[generator][gen]), 3))
+                        except:
+                            pass
         data[uid] = game
     return data
 
@@ -947,6 +959,8 @@ def ordinal(num):
 # commands
 @bot.tree.command(name="generation", description="play")
 async def generation(interaction):
+    print(f"/generation was used in {interaction.channel} ({interaction.guild}) by {interaction.user}.")
+    
     await interaction.response.defer()
     try:
         global defdic 
@@ -973,6 +987,8 @@ async def generation(interaction):
 
 @bot.tree.command(name="objekts", description="view objekts")
 async def objekts(interaction):
+    print(f"/objekts was used in {interaction.channel} ({interaction.guild}) by {interaction.user}.")
+    
     global defdic
     data = imdata()
     iuid = str(interaction.user.id)
@@ -1011,6 +1027,8 @@ async def objekts(interaction):
 
 @bot.tree.command(name="challenges", description="view challenges")
 async def challenges(interaction):
+    print(f"/challenges was used in {interaction.channel} ({interaction.guild}) by {interaction.user}.")
+    
     data = imdata()
     iuid = str(interaction.user.id)
 
@@ -1035,6 +1053,8 @@ async def challenges(interaction):
 
 @bot.tree.command(name="help", description="info on the game")
 async def help(interaction):
+    print(f"/help was used in {interaction.channel} ({interaction.guild}) by {interaction.user}.")
+    
     help = {
         "basics": "basics of the game",
         "concept": "the concept of this game was based on antimatter dimensions, a game where each dimension creates the previous dimension. i wanted to make a tripleS parody so here it is! for credits, see `/credits`",
@@ -1063,6 +1083,8 @@ async def help(interaction):
 
 @bot.tree.command(name="credits", description="view inspiration")
 async def credits(interaction):
+    print(f"/credits was used in {interaction.channel} ({interaction.guild}) by {interaction.user}.")
+    
     embed = discord.Embed(title="credits", description="where the ideas for this bot came from!\nnote that fe000000 was inspired by antimatter dimensions, so if i only mention antimatter dimensions and not fe000000 for certain things although both might feature it, it means the inspiration was taken from AD.")
     fields = [
         ["each dimension produces the dimension below", "antimatter dimensions (and FE000000)"],
@@ -1081,6 +1103,8 @@ async def credits(interaction):
 
 @bot.tree.command(name="story", description="read the story")
 async def fstory(interaction):
+    print(f"/story was used in {interaction.channel} ({interaction.guild}) by {interaction.user}.")
+    
     data = imdata()
     iuid = str(interaction.user.id)
 
@@ -1123,5 +1147,153 @@ async def fstory(interaction):
             await interaction.response.send_message(embed=x)
         except:
             await interaction.followup.send(embed=x)
+
+@bot.tree.command(name="multipliers", description="see your multipliers or boosts")
+async def multipliers(interaction):
+    print(f"/multipliers was used in {interaction.channel} ({interaction.guild}) by {interaction.user}.")
+    
+    data = imdata()
+    iuid = str(interaction.user.id)
+
+    try:
+        data[iuid]
+    except:
+        defdic["start"] = str(dt.now())
+        defdic["access"] = str(dt.now())
+        data[iuid] = defdic 
+        exdata(data)
+    game = data[iuid]
+
+    embed = discord.Embed(title=f"{interaction.user.display_name} ({interaction.user.name})'s boosts", description="boosty woosty ehehe.")
+    soverall = f"x{autoformat(8**(lastdim(iuid, 'S')))} (`8^({lastdim(iuid, 'S')}-1`), {lastdim(iuid, 'S')+1} big S)"
+    if lastdim(iuid, "S") == 7:
+        gen8b = game["S"]["gen8"]["bought"]
+        soverall += f"\nx{autoformat(24**Decimal(gen8b))} (`24^{autoformat(gen8b)}`, S8 generators bought)"
+    if game["prestige"]["ggrav"] > 0:
+        soverall += f"\nx{autoformat(Decimal(game['como']['power'])**Decimal('0.125'))} (`" + autoformat(game["como"]["power"]) + f"^0.125`, como generators)"
+    embed.add_field(name="overall S production (S1)", value=soverall, inline=False)
+    for x in range(lastdim(iuid, "S")+1):
+        count = int(game["S"][f"gen{x+1}"]["bought"])
+        mult = f"\n\nx{autoformat(Decimal(25/24)**Decimal(count), dec=True)} (`(25/24)^{autoformat(count)}`, S{x+1} generators bought)"
+        if x+1 in game["challenges"]["ggrav"]:
+            mult += f"\nx8 (gdgc{x+1} completed)"
+        if game["inchallenge"]["ggrav"] == 6:
+            randm = game["challenges"]["gdgc6"][x]
+            mult += f"\nx{randm} (in gdgc6)"
+        embed.add_field(name=f"S{x+1}" + (" (disabled)" if x in [6, 7] and game["inchallenge"]["ggrav"] == 4 else ""), value=mult, inline=False)
+    await interaction.response.send_message(embed=embed)
+
+@bot.tree.command(name="viewprofile", description="view your profile.")
+async def viewprof(interaction):
+    print(f"/viewprofile was used in {interaction.channel} ({interaction.guild}) by {interaction.user}.")
+    
+    data = imdata()
+    iuid = str(interaction.user.id)
+
+    try:
+        data[iuid]
+    except:
+        defdic["start"] = str(dt.now())
+        defdic["access"] = str(dt.now())
+        data[iuid] = defdic 
+        exdata(data)
+    game = data[iuid]
+
+    bio = game["profile"]["bio"]
+
+    if bio == "":
+        bio = "you have not picked a bio. use `/addbio` to add a bio to your account."
+
+    image = game["profile"]["image"]
+
+    embed = discord.Embed(title=f"{interaction.user.display_name} ({interaction.user.name})'s profile", description=f"{bio}") 
+   
+    embed.set_thumbnail(url=interaction.user.avatar)
+
+    fields = {
+        "S": f"{autoformat(game['S']['amount'])} ({autoformat(game['S']['/s'])}/s)"
+    }
+
+    fco, dco = 0, 0
+    for m in game["objekts"]:
+        for o in game["objekts"][m]:
+            match o[0]:
+                case "1":
+                    fco += 1
+                case "2":
+                    dco += 1
+
+    if game["prestige"]["ggrav"] > 0:
+        ggravf = {
+            "como": f"{autoformat(game['como']['amount'])} ({autoformat(game['como']['/s'])}/s)",
+            "grand gravities": autoformat(game["prestige"]["ggrav"]),
+            "first class objekts": autoformat(fco),
+        }
+        fields = {**fields, **ggravf}
+
+    #if game["prestige"]["egrav"] > 0:
+    if 1 == 2:
+        ggravf = {
+            "Σ": f"{autoformat(game['Σ']['amount'])} ({autoformat(game['Σ']['/s'])}/s)",
+            "event gravities": autoformat(game["prestige"]["egrav"]),
+            "second class objekts": autoformat(dco),
+            "gdgcs completed": autoformat(len(game['challenges']['ggrav']))
+        }
+        fields = {**fields, **ggravf}
+
+    for n, v in game["inchallenge"].items():
+        match n:
+            case "ggrav":
+                chall = "gdgc"
+            case "egrav":
+                chall = "edgc"
+            case _:
+                chall = ""
+        if v == 0:
+            stat = f"you are not in any {chall}."
+        else:
+            stat = f"you are in {chall}{v}."
+        embed.add_field(name=chall, value=stat)
+
+    for n, v in fields.items():
+        embed.add_field(name=n, value=v, inline=not n in ["S", "como", "Σ"])
+
+    embed.set_image(url=image)
+
+    await interaction.response.send_message(embed=embed)
+
+@bot.tree.command(name="editprofile", description="update your gif/bio in your profile.")
+async def editprof(interaction, updating: str, newvalue: str):
+    print(f"/editprofile was used in {interaction.channel} ({interaction.guild}) by {interaction.user}.")
+
+    data = imdata()
+    iuid = str(interaction.user.id)
+
+    try:
+        data[iuid]
+    except:
+        defdic["start"] = str(dt.now())
+        defdic["access"] = str(dt.now())
+        data[iuid] = defdic 
+        exdata(data)
+    
+    
+    if updating in ["bio", "image"]:
+        data[iuid]["profile"][updating] = newvalue
+        exdata(data)
+        embed = discord.Embed(title=f"your new {updating}!", description=(f"your {updating} has been set to ```{newvalue}```" if updating == "bio" else f"your {updating} has been updated!") + "\ncheck `/viewprofile` to see how it looks!")
+    else:
+        embed = discord.Embed(title="invalid variable!", description="please use either 'bio' or 'image'.")
+
+    await interaction.response.send_message(embed=embed)
+    
+@bot.event
+async def on_ready():
+    print(f'{bot.user} is online.')
+    print(f'in {len(bot.guilds)} servers')
+    for x in bot.guilds:
+        print(f'connected to {x.name}')
+    print()
+    await bot.setup_hook()
 
 bot.run(TOKEN)
